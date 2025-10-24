@@ -2,6 +2,8 @@ import AsyncHandler from "express-async-handler";
 import { User } from "../../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { AppResponse } from "../../utils/AppResponse.js";
+import { setCookies } from "../../utils/setCookies.js";
 
 export const loginController = AsyncHandler(async (req , res) => {
   const { password, email } = req.body;
@@ -14,7 +16,7 @@ export const loginController = AsyncHandler(async (req , res) => {
   // Select only necessary fields to reduce data transfer
   const user = await User.findOne({ 
     where: { email },
-    attributes: ['id', 'firstname', 'password', 'googleId']
+    attributes: ['id', 'username', 'password', 'googleId']
   });
 
   if (!user) {
@@ -26,7 +28,7 @@ export const loginController = AsyncHandler(async (req , res) => {
   }
 
   // Verify password
-  if ((await bcrypt.compare(password, user.password))) {
+  if (!(await bcrypt.compare(password, user.password))) {
     return AppResponse.error(res, "Invalid email or password");
   }
 
@@ -39,5 +41,5 @@ export const loginController = AsyncHandler(async (req , res) => {
 
   // Set cookie and send response
   setCookies(res, "access_token", accessToken);
-  return AppResponse.success(res, `Welcome ${user.firstname}`, null);
+  return AppResponse.success(res, `Welcome ${user.username}`, null);
 });

@@ -1,8 +1,8 @@
-const express = from "express")
+import express from "express"
 const route = express.Router();
-const {startBollingerBands,stopBollingerBands,deleteBollingerBands,restartBollingerBands,} = from "../../controllers/algorithms/bollingerbands/start-bollinger-bands.js");
-const {deleteDBAlgo,getDBAlgos,} = from "../../controllers/algorithms/bollingerbands/bollinger-bands-database.js");
-const { getEncryptedApiKeyFromDBAndDecrypt } = from "../../controllers/user/getEncryptedApiKeyFromDB.js");
+import {startBollingerBands,stopBollingerBands,deleteBollingerBands,restartBollingerBands,}  from "../../controllers/algorithms/bollingerbands/start-bollinger-bands.js"
+import {deleteDBAlgo,getDBAlgos,}  from "../../controllers/algorithms/bollingerbands/bollinger-bands-database.js"
+import { getEncryptedApiKeyFromDBAndDecrypt }  from "../../controllers/user/getEncryptedApiKeyFromDB.js"
 
 
 route.post("/get/", express.json(), async (req, res) => {

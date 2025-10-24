@@ -1,8 +1,5 @@
 // API
-
-// //////////////////////////////////////////
-const origin = "https://arwis.up.railway.app";
-// const origin = "http://localhost:3000";
+const origin = "http://localhost:3000";
 
 // Server and Database Packages
 import dotenv from "dotenv"
@@ -11,10 +8,10 @@ import cors from "cors"
 import { connectDB }  from "./db.js"
 import {sendEncryptedApiKeyToDB}  from "./controllers/user/sendUserEncryptedApiKeyToDB.js"
 import AuthRouter from './routes/User/UserRoute.js'
-// import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js')
-// import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js")
-// import WalletRouter  from "./routes/wallets/WalletRoute.js")
-// import TickerRouter  from "./routes/Ticker/TickerRoute.js")
+// import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js'
+// import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
+// import WalletRouter  from "./routes/wallets/WalletRoute.js"
+// import TickerRouter  from "./routes/Ticker/TickerRoute.js"
 import { generateKeyPair } from "./utils/generateKeypair.js"
 import ccxt from "ccxt"
 // const publicBinance = new ccxt.binanceus();
@@ -29,9 +26,9 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
-app.on("uncaughtException", function (err) {
-  console.log(err);
-});
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 dotenv.config();
 
 // Filtered symbols Binance.US supports
@@ -120,7 +117,7 @@ app.get("/api/tradelist/", express.json(), async (req, res) => {
 // //////////////////////////////////////////
 
 // Authentication Endpoints
-app.use("/api/auth", AuthRouter);
+app.use("/api/v1/auth", AuthRouter);
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints
@@ -188,7 +185,9 @@ app.post("/api/encrypt-api-key", express.json(), async (req, res) => {
     console.log(e);
   }
 });
-
+app.on("uncaughtException", function (err) {
+  console.log(err);
+});
 //Error Handling Middleware
 app.use(errorHandler);
 
