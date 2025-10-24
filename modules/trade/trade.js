@@ -1,4 +1,4 @@
-const ccxt = from "ccxt");
+import ccxt from "ccxt"
 
 const trade = async (curPair, side, amountPerc, key, secret, getMarkets) => {
   const authedBinance = new ccxt.binance({

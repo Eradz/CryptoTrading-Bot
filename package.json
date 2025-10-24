@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "test": "cross-env mocha './test/**/*.test.js' --reporter spec --timeout 20000",
-    "serve": "nodemon index.js"
+    "server": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "ccxt": "^4.5.12",
     "chai": "^6.2.0",
     "cors": "^2.8.5",
