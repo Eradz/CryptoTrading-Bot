@@ -1,9 +1,9 @@
 import express from "express"
-const route = express.Router();
 import portfolio from "../../utils/portfolio/portfolio-analytics.js"
 import databasePortfolioManager from "../../controllers/portfolio/portfolio-database.js"
 import databaseWalletManager from "../../modules/wallets/wallets-database.js"
 import { getEncryptedApiKeyFromDBAndDecrypt } from "../../controllers/user/getEncryptedApiKeyFromDB.js"
+const route = express.Router();
 databasePortfolioManager.startSetPortfolioValueInDBforEachUser(
   client,
   dbPrivateKey

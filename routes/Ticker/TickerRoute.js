@@ -31,4 +31,4 @@ route.post("/candles", express.json(), async (req, res) => {
   }
 });
 
-export default router;;
+export default route;

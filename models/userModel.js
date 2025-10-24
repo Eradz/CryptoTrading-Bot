@@ -19,14 +19,7 @@ export const User = sequelize.define("User",{
             isEmail: true
         }
     },
-    firstname: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate:{
-            isAlpha: true
-        }
-    },
-    lastname: {
+    username: {
         type: DataTypes.STRING,
         allowNull: false,
         validate:{
@@ -37,11 +30,12 @@ export const User = sequelize.define("User",{
         type: DataTypes.STRING,
         allowNull: true,
     },
-    role: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate:{
-            isAlpha: true
-        }
-    }  
+    // role: {
+    //     type: DataTypes.STRING,
+    //     allowNull: false,
+    //     validate:{
+    //         isAlpha: true
+    //     },
+    //     defaultValue: "User"
+    // }  
 }, {timestamps: true})
