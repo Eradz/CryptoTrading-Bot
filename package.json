@@ -3,22 +3,27 @@
   "version": "1.0.0",
   "description": "api endpoints for arwis web app to communicate with binace api and database",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "test",
+    "test": "cross-env mocha './test/**/*.test.js' --reporter spec --timeout 20000",
     "serve": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "ccxt": "^4.5.12",
+    "chai": "^6.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "express-async-handler": "^1.2.0",
     "firebase-admin": "^13.5.0",
+    "mocha": "^11.7.4",
     "mongodb": "^4.12.1",
     "node-jsencrypt": "^1.0.0",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
+    "supertest": "^7.1.4",
     "technicalindicators": "^3.1.0",
     "uuid": "^9.0.0"
   },

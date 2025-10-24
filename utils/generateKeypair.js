@@ -1,5 +1,5 @@
 // Encryption packages
-const crypto = require("crypto");
+import crypto  from "crypto"
 
 // GENERATE RSA ENCRYPTION KEYPAIR FOR CLIENT
 const generateKeyPair = () => {
@@ -17,4 +17,4 @@ const generateKeyPair = () => {
   return keyPair;
 };
 
-module.exports = { generateKeyPair };
+export { generateKeyPair };

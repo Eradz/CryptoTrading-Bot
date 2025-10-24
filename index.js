@@ -5,21 +5,24 @@ const origin = "https://arwis.up.railway.app";
 // const origin = "http://localhost:3000";
 
 // Server and Database Packages
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { connectDB } = require("./db.js");
-// const AlgorithRouter = require("./routes/algorithms/AlgorithmRoute.js")
-// const WalletRouter = require("./routes/wallets/WalletRoute.js")
-// const TickerRouter = require("./routes/Ticker/TickerRoute.js")
-const { generateKeyPair } = require("./utils/generateKeypair.js");
-const ccxt = require("ccxt");
+import dotenv from "dotenv"
+import express from "express"
+import cors from "cors"
+import { connectDB }  from "./db.js"
+import {sendEncryptedApiKeyToDB}  from "./controllers/user/sendUserEncryptedApiKeyToDB.js"
+import AuthRouter from './routes/User/UserRoute.js'
+// import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js')
+// import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js")
+// import WalletRouter  from "./routes/wallets/WalletRoute.js")
+// import TickerRouter  from "./routes/Ticker/TickerRoute.js")
+import { generateKeyPair } from "./utils/generateKeypair.js"
+import ccxt from "ccxt"
 // const publicBinance = new ccxt.binanceus();
-const crypto = require("crypto");
-const databaseApikeyManager = require("./modules/database_manager/database-apikey-manager.js");
+import databaseApikeyManager from "./utils/database_manager/database-apikey-manager.js"
+import { errorHandler } from "./middleware/errorHandler.js"
 
 // EXPRESS SERVER INITIALIZATION
-const app = express();
+export const app = express();
 const port = process.env.PORT || 5001;
 const corsOptions = {
   origin: origin,
@@ -29,7 +32,7 @@ app.use(cors(corsOptions));
 app.on("uncaughtException", function (err) {
   console.log(err);
 });
-
+dotenv.config();
 
 // Filtered symbols Binance.US supports
 const supportedSymbols = [
@@ -53,7 +56,7 @@ const dbPrivateKey = process.env.DB_PRIVATE_KEY;
 const allUsersRunningAlgos = {};
 // //////////////////////////////////////////
 app.get("/api/tradelist/", express.json(), async (req, res) => {
-  // const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+  // const api = await getEncryptedApiKeyFromDBAndDecrypt(
   //   req.body.email,
   //   dbPrivateKey,
   //   client
@@ -115,6 +118,9 @@ app.get("/api/tradelist/", express.json(), async (req, res) => {
   res.send(tradesSortedByDate);
 });
 // //////////////////////////////////////////
+
+// Authentication Endpoints
+app.use("/api/auth", AuthRouter);
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints
@@ -170,7 +176,7 @@ app.post("/api/encrypt-api-key", express.json(), async (req, res) => {
 
   // ENCRYPT API KEY AND SECRET AND SEND TO DATABASE
   try {
-    await databaseApikeyManager.sendEncryptedApiKeyToDB(
+    await sendEncryptedApiKeyToDB(
       dbPublicKey,
       clientApiKey,
       clientApiSecret,
@@ -183,8 +189,10 @@ app.post("/api/encrypt-api-key", express.json(), async (req, res) => {
   }
 });
 
-// START SERVER LISTENER
+//Error Handling Middleware
+app.use(errorHandler);
 
+// START SERVER LISTENER
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });

@@ -1,4 +1,4 @@
-const BollingerBands = require("technicalindicators").BollingerBands;
+import {BollingerBands} from "technicalindicators";
 
 const getBollingerBands = (data, period, stdDev, timeStamps, isNew) => {
   const input = {
@@ -17,6 +17,6 @@ const getBollingerBands = (data, period, stdDev, timeStamps, isNew) => {
   return bollingerBands;
 };
 
-module.exports = {
+export {
   getBollingerBands,
 };

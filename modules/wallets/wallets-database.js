@@ -41,7 +41,7 @@ const getWalletsFromDB = async (email, client) => {
   }
 };
 
-module.exports = {
+export {
   setWalletInDB,
   getWalletsFromDB,
   deleteWalletFromDB,

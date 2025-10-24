@@ -1,12 +1,10 @@
-const express = require("express")
+import express from "express"
 const route = express.Router();
-const portfolio = require("../../modules/portfolio/portfolio-analytics.js");
-const databaseApikeyManager = require("../../modules/database_manager/database-apikey-manager.js");
-const databasePortfolioManager = require("../../modules/portfolio/portfolio-database.js");
-const databaseWalletManager = require("../../modules/wallets/wallets-database.js");
-const { routeendFile } = require("fs");
-const { connectDB } = require("./../../db.js");
-const { generateKeyPair } = require("../..//utils/generateKeypair.js");databasePortfolioManager.startSetPortfolioValueInDBforEachUser(
+import portfolio from "../../utils/portfolio/portfolio-analytics.js"
+import databasePortfolioManager from "../../controllers/portfolio/portfolio-database.js"
+import databaseWalletManager from "../../modules/wallets/wallets-database.js"
+import { getEncryptedApiKeyFromDBAndDecrypt } from "../../controllers/user/getEncryptedApiKeyFromDB.js"
+databasePortfolioManager.startSetPortfolioValueInDBforEachUser(
   client,
   dbPrivateKey
 );
@@ -46,7 +44,7 @@ route.post("/get-wallets", express.json(), async (req, res) => {
 // GET WALLET BALANCE
 route.post("/wallet", express.json(), async (req, res) => {
   try {
-    const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+    const api = await getEncryptedApiKeyFromDBAndDecrypt(
       req.body.email,
       dbPrivateKey,
       client
@@ -92,7 +90,7 @@ route.post("/portfolio-chart", express.json(), async (req, res) => {
 // PORTFOLIO VALUE ROUTE
 route.post("/portfolio-value", express.json(), async (req, res) => {
   try {
-    const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+    const api = await getEncryptedApiKeyFromDBAndDecrypt(
       req.body.email,
       dbPrivateKey,
       client
@@ -127,7 +125,7 @@ route.post("/set-portfolio-value", express.json(), async (req, res) => {
 // PORTFOLIO DISTRIBUTION ROUTE
 route.post("/portfolio-distribution", express.json(), async (req, res) => {
   try {
-    const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+    const api = await getEncryptedApiKeyFromDBAndDecrypt(
       req.body.email,
       dbPrivateKey,
       client
@@ -143,4 +141,4 @@ route.post("/portfolio-distribution", express.json(), async (req, res) => {
   }
 });
 
-module.exports = route;
+export default router;;

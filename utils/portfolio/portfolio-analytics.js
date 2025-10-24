@@ -1,6 +1,6 @@
 // GET PORTFOLIO VALUE
 
-const ccxt = require("ccxt");
+const ccxt = from "ccxt");
 const publicBinance = new ccxt.binanceus();
 const getPortfolioValueFromBinance = async (apiKey, apiSecret) => {
   const authedBinance = new ccxt.binanceus({
@@ -80,7 +80,7 @@ const getPortfolioDistributionFromBinance = async (apiKey, apiSecret) => {
   }
 };
 
-module.exports = {
+export {
   getPortfolioValueFromBinance,
   getPortfolioDistributionFromBinance,
 };

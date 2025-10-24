@@ -1,4 +1,4 @@
-const ccxt = require("ccxt");
+const ccxt = from "ccxt");
 
 const trade = async (curPair, side, amountPerc, key, secret, getMarkets) => {
   const authedBinance = new ccxt.binance({
@@ -44,4 +44,4 @@ const trade = async (curPair, side, amountPerc, key, secret, getMarkets) => {
   }
 };
 
-module.exports = { trade };
+export { trade };

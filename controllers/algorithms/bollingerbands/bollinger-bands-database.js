@@ -1,5 +1,3 @@
-const databaseApikeyManager = require("../../../modules/database_manager/database-apikey-manager.js");
-
 const setBBAlgoDB = async (email, client, algoData) => {
   try {
     const collection = client.db("arwis").collection("users");
@@ -66,7 +64,7 @@ const deleteDBAlgo = async (email, client, algoId) => {
   }
 };
 
-module.exports = {
+export {
   setBBAlgoDB,
   getDBAlgos,
   deleteDBAlgo,

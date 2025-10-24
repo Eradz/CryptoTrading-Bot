@@ -1,7 +1,7 @@
-const express = require("express")
+import express from "express"
 const route = express.Router();
 // Exchange packages
-const ccxt = require("ccxt");
+import ccxt from "ccxt"
 const publicBinance = new ccxt.binanceus();
 
 // GET TICKER DATA
@@ -31,4 +31,4 @@ route.post("/candles", express.json(), async (req, res) => {
   }
 });
 
-module.exports = route;
+export default router;;

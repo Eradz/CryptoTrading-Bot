@@ -1,10 +1,10 @@
-const { getBollingerBands } = require("./bollinger-bands");
-const { trade } = require("../../../modules/trade/trade");
-const {
+import { getBollingerBands } from "./bollinger-bands"
+import { trade } from "../../../modules/trade/trade"
+import {
   setBBAlgoDB,
   setBBAlgoActiveDB,
-} = require("./bollinger-bands-database");
-const ccxt = require("ccxt");
+}  from "./bollinger-bands-database"
+import ccxt from "ccxt"
 //Bollinger Bands needs historical dataset then new datapoint is added every 5 minutes
 let runningBollingerBands = {};
 
@@ -233,7 +233,7 @@ const startBollingerBands = async (
   }
 };
 
-module.exports = {
+export {
   stopBollingerBands,
   startBollingerBands,
   deleteBollingerBands,

@@ -1,7 +1,8 @@
-const express = require("express")
+const express = from "express")
 const route = express.Router();
-const {startBollingerBands,stopBollingerBands,deleteBollingerBands,restartBollingerBands,} = require("../../controllers/algorithms/bollingerbands/start-bollinger-bands.js");
-const {deleteDBAlgo,getDBAlgos,} = require("../../controllers/algorithms/bollingerbands/bollinger-bands-database.js");
+const {startBollingerBands,stopBollingerBands,deleteBollingerBands,restartBollingerBands,} = from "../../controllers/algorithms/bollingerbands/start-bollinger-bands.js");
+const {deleteDBAlgo,getDBAlgos,} = from "../../controllers/algorithms/bollingerbands/bollinger-bands-database.js");
+const { getEncryptedApiKeyFromDBAndDecrypt } = from "../../controllers/user/getEncryptedApiKeyFromDB.js");
 
 
 route.post("/get/", express.json(), async (req, res) => {
@@ -40,7 +41,7 @@ route.post("/start/BBands/", express.json(), async (req, res) => {
   const standardDev = parseFloat(req.body.variables["StdDev:"]);
   const amount = req.body.variables["% Amt:"];
 
-  const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+  const api = await getEncryptedApiKeyFromDBAndDecrypt(
     req.body.email,
     dbPrivateKey,
     client
@@ -74,7 +75,7 @@ route.post("/start/BBands/", express.json(), async (req, res) => {
 route.post("/restart/", express.json(), async (req, res) => {
   const id = req.body.id;
   const email = req.body.email;
-  const api = await databaseApikeyManager.getEncryptedApiKeyFromDBAndDecrypt(
+  const api = await getEncryptedApiKeyFromDBAndDecrypt(
     req.body.email,
     dbPrivateKey,
     client
@@ -100,4 +101,4 @@ route.post("/stop/", express.json(), async (req, res) => {
 });
 
 
-module.exports = route;
+export default router;;
