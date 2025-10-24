@@ -1,7 +1,4 @@
 // API
-
-// //////////////////////////////////////////
-// const origin = "https://arwis.up.railway.app";
 const origin = "http://localhost:3000";
 
 // Server and Database Packages
@@ -31,9 +28,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.on("uncaughtException", function (err) {
-  console.log(err);
-});
+
 dotenv.config();
 
 // Filtered symbols Binance.US supports
@@ -190,7 +185,9 @@ app.post("/api/encrypt-api-key", express.json(), async (req, res) => {
     console.log(e);
   }
 });
-
+app.on("uncaughtException", function (err) {
+  console.log(err);
+});
 //Error Handling Middleware
 app.use(errorHandler);
 

@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs"
 import { AppResponse } from "../../utils/AppResponse.js"
 
 export const signupController = AsyncHandler(async(req, res) =>{
-   console.log(req.body)
    const {username, password, email} = req.body
    if(!username || !password || !email ){
       return AppResponse.error(res, "Please fill all required fields")
