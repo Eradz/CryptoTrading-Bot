@@ -13,7 +13,7 @@ const decryptKey = (encryptedKey, privateKey) => {
   const decrypt = new JSEncrypt();
   decrypt.setPrivateKey(privateKey);
   const decryptedKey = decrypt.decrypt(encryptedKey);
-  return decryptedKey;
+  return decryptedKey
 };
 
 
