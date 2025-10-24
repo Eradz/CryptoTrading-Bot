@@ -1,7 +1,6 @@
 // API
 
 // //////////////////////////////////////////
-
 const origin = "https://arwis.up.railway.app";
 // const origin = "http://localhost:3000";
 
@@ -9,7 +8,7 @@ const origin = "https://arwis.up.railway.app";
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-// const { connectDB } = require("./db.js");
+const { connectDB } = require("./db.js");
 // const AlgorithRouter = require("./routes/algorithms/AlgorithmRoute.js")
 // const WalletRouter = require("./routes/wallets/WalletRoute.js")
 // const TickerRouter = require("./routes/Ticker/TickerRoute.js")
@@ -18,7 +17,6 @@ const ccxt = require("ccxt");
 // const publicBinance = new ccxt.binanceus();
 const crypto = require("crypto");
 const databaseApikeyManager = require("./modules/database_manager/database-apikey-manager.js");
-const { timeStamp } = require("console");
 
 // EXPRESS SERVER INITIALIZATION
 const app = express();
@@ -41,7 +39,7 @@ const supportedSymbols = [
   "LTC/USDT",
   "ADA/USDT",
 ];
-// connectDB();
+connectDB();
 
 
 
@@ -71,18 +69,18 @@ app.get("/api/tradelist/", express.json(), async (req, res) => {
   authedBinance.setSandboxMode(true);
   await authedBinance.loadMarkets(true);
 
-  console.log(authedBinance.markets);
-
   Object.keys(authedBinance.markets).filter((symbol) => {
-    if (symbol.includes("USD")) return symbol;
+    if (symbol.includes("USDT")) return symbol;
   });
   // get trades from all symbols
   const balance = await authedBinance.fetchBalance();
   const symbolObj = Object.keys(balance.total);
+  
   const symbols = symbolObj.map((symbol) => {
-    if (symbol === "USD" || symbol === "BUSD") return;
-    return symbol + "/USD";
+    if (symbol === "USDT" || symbol === "BUSDT") return;
+    return symbol + "/USDT";
   });
+  
   const trades = [];
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === undefined || !supportedSymbols.includes(symbols[i]))
@@ -93,7 +91,6 @@ app.get("/api/tradelist/", express.json(), async (req, res) => {
       undefined,
       5
     );
-
     if (tradesForSymbol.length === 0) continue;
     tradesForSymbol.forEach((trade) => {
       trades.push(trade);
