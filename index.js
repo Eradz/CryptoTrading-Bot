@@ -7,7 +7,9 @@ import express from "express"
 import cors from "cors"
 import { connectDB }  from "./db.js"
 import {sendEncryptedApiKeyToDB}  from "./controllers/user/sendUserEncryptedApiKeyToDB.js"
-import AuthRouter from './routes/User/UserRoute.js'
+import AuthRouter from './routes/Auth/AuthRouter.js'
+import UserRouter from "./routes/User/UserRoute.js"
+import ExchangeRouter from "./routes/Exchange/exchangeRouter.js"
 // import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js'
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
@@ -114,10 +116,13 @@ app.get("/api/tradelist/", express.json(), async (req, res) => {
 
   res.send(tradesSortedByDate);
 });
-// //////////////////////////////////////////
-
 // Authentication Endpoints
 app.use("/api/v1/auth", AuthRouter);
+// User Endpoints
+app.use("/api/v1/users", UserRouter);
+// Exchange Endpoints
+app.use("/api/v1/exchange", ExchangeRouter);
+
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints
