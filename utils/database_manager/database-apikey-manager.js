@@ -1,7 +1,7 @@
 import JSEncrypt  from "node-jsencrypt"
 
 // ENCRYPT APIKEY AND APISECRET
-const encryptKey = (key, publicKey) => {
+export const encryptKey = (key, publicKey) => {
   const encrypt = new JSEncrypt();
   encrypt.setPublicKey(publicKey);
   const encryptedKey = encrypt.encrypt(key);
@@ -9,7 +9,7 @@ const encryptKey = (key, publicKey) => {
 };
 
 // DECRYPT APIKEY AND APISECRET
-const decryptKey = (encryptedKey, privateKey) => {
+export const decryptKey = (encryptedKey, privateKey) => {
   const decrypt = new JSEncrypt();
   decrypt.setPrivateKey(privateKey);
   const decryptedKey = decrypt.decrypt(encryptedKey);
@@ -18,7 +18,7 @@ const decryptKey = (encryptedKey, privateKey) => {
 
 
 // DELETE USER FROM DATABASE
-const deleteUserFromDB = async (email, client) => {
+export const deleteUserFromDB = async (email, client) => {
   const collection = client.db("arwis").collection("users");
   try {
     await collection.deleteOne({ email: email });

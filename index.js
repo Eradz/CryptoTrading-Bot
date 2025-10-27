@@ -6,7 +6,7 @@ import dotenv from "dotenv"
 import express from "express"
 import cors from "cors"
 import { connectDB }  from "./db.js"
-import {sendEncryptedApiKeyToDB}  from "./controllers/user/sendUserEncryptedApiKeyToDB.js"
+import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncryptedApiKeyToDB.js"
 import AuthRouter from './routes/Auth/AuthRouter.js'
 import UserRouter from "./routes/User/UserRoute.js"
 import ExchangeRouter from "./routes/Exchange/exchangeRouter.js"
@@ -19,6 +19,7 @@ import ccxt from "ccxt"
 // const publicBinance = new ccxt.binanceus();
 import databaseApikeyManager from "./utils/database_manager/database-apikey-manager.js"
 import { errorHandler } from "./middleware/errorHandler.js"
+import { getEncryptedApiKeyFromDBAndDecrypt } from "./utils/database_manager/getEncryptedApiKeyFromDB.js";
 
 // EXPRESS SERVER INITIALIZATION
 export const app = express();
@@ -44,28 +45,22 @@ const supportedSymbols = [
 connectDB();
 
 
-
 const clientKeyPair = generateKeyPair();
 const clientPublicKey = clientKeyPair.publicKey;
 const clientPrivateKey = clientKeyPair.privateKey;
 
+
 const dbPublicKey = process.env.DB_PUBLIC_KEY;
-const dbPrivateKey = process.env.DB_PRIVATE_KEY;
 // //////////////////////////////////////////
 const allUsersRunningAlgos = {};
 // //////////////////////////////////////////
-app.get("/api/tradelist/", express.json(), async (req, res) => {
-  // const api = await getEncryptedApiKeyFromDBAndDecrypt(
-  //   req.body.email,
-  //   dbPrivateKey,
-  //   client
-  // );
+app.get("/api/tradelist/", async (req, res) => {
+  const userId = req.id
+  const api = await getEncryptedApiKeyFromDBAndDecrypt(userId);
   const authedBinance = new ccxt.binanceus({
-    apiKey: process.env.API_KEY_STAGE,
-    secret: process.env.API_SECRET_STAGE,
-    enableServerTimeSync: true
-    // apiKey: api.apiKey,
-    // secret: api.apiSecret,
+    apiKey: api.apiKey,
+    secret: api.apiSecret,
+    enableServerTimeSync: true,
   });
   //to allow for testnet
   authedBinance.setSandboxMode(true);
@@ -134,17 +129,6 @@ app.use("/api/v1/exchange", ExchangeRouter);
 
 // ////////////////////////////////////////////////////
 // API KEY ENCRYPTION HANDLING/ AuthForm.js ENDPOINTS
-
-// DELETE USER ROUTE
-app.post("/api/delete-user", express.json(), async (req, res) => {
-  try {
-    const email = req.body.email;
-    databaseApikeyManager.deleteUserFromDB(email, client);
-    res.status(200).send();
-  } catch (e) {
-    console.log(e);
-  }
-});
 
 // SEND PUBLIC ENCRYPTION KEY TO CLIENT
 app.post("/api/client-public-key", (req, res) => {
