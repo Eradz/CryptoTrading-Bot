@@ -15,9 +15,13 @@ export const createExchangeController = AsyncHandler(async (req, res) => {
             return AppResponse.error(res, "All fields are required" );
         }
 
+        const exchangeExist = await Exchange.findOne({ where: { userId, exchangeName } });
+        if (exchangeExist) {
+            return AppResponse.error(res, "Exchange already exists");
+        }
+
         const encryptedEak = encryptKey(eak);
         const encryptedEas = encryptKey(eas);
-
         // Create exchange record in the database
         const exchange = await Exchange.create({
             exchangeName,

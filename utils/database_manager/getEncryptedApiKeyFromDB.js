@@ -1,21 +1,23 @@
 import AsyncHandler from "express-async-handler";
 import { Exchange } from "../../models/exchangeDetails.js";
 import { decryptKey } from "./database-apikey-manager.js";
-import dotenv from "dotenv"
+import e from "express";
 
-dotenv.config();
-const PrivateKey = process.env.PG_CERT;
 
 export const getEncryptedApiKeyFromDBAndDecrypt = AsyncHandler(async (
   userId,
 ) => {
   try {
-    const user = await Exchange.findOne({ userId: userId })
-    const encryptedApiKey = user.apiKey;
-    const encryptedApiSecret = user.apiSecret;
-    const apiKey = decryptKey(encryptedApiKey, PrivateKey);
-    const apiSecret = decryptKey(encryptedApiSecret, PrivateKey);
-    return { apiKey, apiSecret };
+    const user = await Exchange.findOne({ where: { userId: userId } })
+    const encryptedApiKey = user.eak;
+    const encryptedApiSecret = user.eas;
+    const apiKey = decryptKey(encryptedApiKey);
+    // const apiSecret = decryptKey(encryptedApiSecret);
+    console.log("API Key:", encryptedApiKey);
+    console.log("API Secret:", encryptedApiSecret);
+    console.log("Decrypted API Key:", apiKey);
+    // return { apiKey, apiSecret };
+    return { encryptedApiKey, encryptedApiSecret };
   } catch (e) {
     console.log(e);
   }

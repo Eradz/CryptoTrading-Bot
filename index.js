@@ -9,7 +9,7 @@ import { connectDB }  from "./db.js"
 import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncryptedApiKeyToDB.js"
 import AuthRouter from './routes/Auth/AuthRouter.js'
 import UserRouter from "./routes/User/UserRoute.js"
-import ExchangeRouter from "./routes/Exchange/exchangeRouter.js"
+import ExchangeRouter from "./routes/Exchange/ExchangeRouter.js"
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
 // import TickerRouter  from "./routes/Ticker/TickerRoute.js"
@@ -61,62 +61,65 @@ const dbPublicKey = process.env.DB_PUBLIC_KEY;
 // //////////////////////////////////////////
 const allUsersRunningAlgos = {};
 // //////////////////////////////////////////
-app.get("/api/tradelist/", async (req, res) => {
-  const userId = req.id
+app.get("/api/tradelist/:id", async (req, res) => {
+  const userId = req.params.id;
   const api = await getEncryptedApiKeyFromDBAndDecrypt(userId);
-  const authedBinance = new ccxt.binanceus({
-    apiKey: api.apiKey,
-    secret: api.apiSecret,
-    enableServerTimeSync: true,
-  });
-  //to allow for testnet
-  authedBinance.setSandboxMode(true);
-  await authedBinance.loadMarkets(true);
+  // const authedBinance = new ccxt.binanceus({
+  //   apiKey: api.apiKey,
+  //   secret: api.apiSecret,
+  //   enableServerTimeSync: true,
+  // });
+  // //to allow for testnet
+  // authedBinance.setSandboxMode(true);
+  // await authedBinance.loadMarkets(true);
 
-  Object.keys(authedBinance.markets).filter((symbol) => {
-    if (symbol.includes("USDT")) return symbol;
-  });
-  // get trades from all symbols
-  const balance = await authedBinance.fetchBalance();
-  const symbolObj = Object.keys(balance.total);
+  // authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000);
+  // const orders = authedBinance.fetchOrderBook("BTC/USDT");
+  res.send(api)
+  // Object.keys(authedBinance.markets).filter((symbol) => {
+  //   if (symbol.includes("USDT")) return symbol;
+  // });
+  // // get trades from all symbols
+  // const balance = await authedBinance.fetchBalance();
+  // const symbolObj = Object.keys(balance.total);
   
-  const symbols = symbolObj.map((symbol) => {
-    if (symbol === "USDT" || symbol === "BUSDT") return;
-    return symbol + "/USDT";
-  });
+  // const symbols = symbolObj.map((symbol) => {
+  //   if (symbol === "USDT" || symbol === "BUSDT") return;
+  //   return symbol + "/USDT";
+  // });
   
-  const trades = [];
-  for (let i = 0; i < symbols.length; i++) {
-    if (symbols[i] === undefined || !supportedSymbols.includes(symbols[i]))
-      continue;
-    const symbol = symbols[i];
-    const tradesForSymbol = await authedBinance.fetchOrders(
-      symbol,
-      undefined,
-      5
-    );
-    if (tradesForSymbol.length === 0) continue;
-    tradesForSymbol.forEach((trade) => {
-      trades.push(trade);
-    });
-  }
+  // const trades = [];
+  // for (let i = 0; i < symbols.length; i++) {
+  //   if (symbols[i] === undefined || !supportedSymbols.includes(symbols[i]))
+  //     continue;
+  //   const symbol = symbols[i];
+  //   const tradesForSymbol = await authedBinance.fetchOrders(
+  //     symbol,
+  //     undefined,
+  //     5
+  //   );
+  //   if (tradesForSymbol.length === 0) continue;
+  //   tradesForSymbol.forEach((trade) => {
+  //     trades.push(trade);
+  //   });
+  // }
 
-  const parsedTrades = trades.map((trade) => {
-    let { side, symbol, amount, timestamp } = trade;
+  // const parsedTrades = trades.map((trade) => {
+  //   let { side, symbol, amount, timestamp } = trade;
 
-    amount = amount.toFixed(2);
-    return {
-      side,
-      symbol,
-      amount,
-      timestamp,
-    };
-  });
-  const tradesSortedByDate = parsedTrades.sort((a, b) => {
-    return new Date(b.timestamp) - new Date(a.timestamp);
-  });
+  //   amount = amount.toFixed(2);
+  //   return {
+  //     side,
+  //     symbol,
+  //     amount,
+  //     timestamp,
+  //   };
+  // });
+  // const tradesSortedByDate = parsedTrades.sort((a, b) => {
+  //   return new Date(b.timestamp) - new Date(a.timestamp);
+  // });
 
-  res.send(tradesSortedByDate);
+  // res.send(tradesSortedByDate);
 });
 // Authentication Endpoints
 app.use("/api/v1/auth", AuthRouter);

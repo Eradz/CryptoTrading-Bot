@@ -1,4 +1,4 @@
-import {publicDecrypt,privateEncrypt, generateKeyPairSync, publicEncrypt, privateDecrypt}  from "crypto"
+import {generateKeyPairSync, publicEncrypt, privateDecrypt}  from "crypto"
 
 const {privateKey, publicKey} = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -25,18 +25,7 @@ export const decryptKey = (encryptedKey) => {
   return decrypted.toString("utf-8");
 };
 
-
-// DELETE USER FROM DATABASE
-export const deleteUserFromDB = async (email, client) => {
-  const collection = client.db("arwis").collection("users");
-  try {
-    await collection.deleteOne({ email: email });
-  } catch (e) {
-    console.log(e);
-  }
-};
 const databaseApikeyManager = {
-  deleteUserFromDB,
   encryptKey,
   decryptKey,
 };
