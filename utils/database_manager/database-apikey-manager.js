@@ -1,19 +1,28 @@
-import JSEncrypt  from "node-jsencrypt"
+import {publicDecrypt,privateEncrypt, generateKeyPairSync, publicEncrypt, privateDecrypt}  from "crypto"
 
+const {privateKey, publicKey} = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: {
+    type: "spki",
+    format: "pem"
+  },
+  privateKeyEncoding: {
+    type: "pkcs8",
+    format: "pem"
+  }
+})
 // ENCRYPT APIKEY AND APISECRET
-export const encryptKey = (key, publicKey) => {
-  const encrypt = new JSEncrypt();
-  encrypt.setPublicKey(publicKey);
-  const encryptedKey = encrypt.encrypt(key);
-  return encryptedKey;
+export const encryptKey = (key) => {
+  const buffer = Buffer.from(key);
+  const encrypted = publicEncrypt(publicKey, buffer);
+  return encrypted.toString("base64");
 };
 
 // DECRYPT APIKEY AND APISECRET
-export const decryptKey = (encryptedKey, privateKey) => {
-  const decrypt = new JSEncrypt();
-  decrypt.setPrivateKey(privateKey);
-  const decryptedKey = decrypt.decrypt(encryptedKey);
-  return decryptedKey
+export const decryptKey = (encryptedKey) => {
+  const buffer = Buffer.from(encryptedKey, "base64");
+  const decrypted = privateDecrypt(privateKey, buffer);
+  return decrypted.toString("utf-8");
 };
 
 

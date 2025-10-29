@@ -10,7 +10,6 @@ import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncrypt
 import AuthRouter from './routes/Auth/AuthRouter.js'
 import UserRouter from "./routes/User/UserRoute.js"
 import ExchangeRouter from "./routes/Exchange/exchangeRouter.js"
-// import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js'
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
 // import TickerRouter  from "./routes/Ticker/TickerRoute.js"
@@ -33,6 +32,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 dotenv.config();
+connectDB();
+
+// Authentication Endpoints
+app.use("/api/v1/auth", AuthRouter);
+// User Endpoints
+app.use("/api/v1/users", UserRouter);
+// Exchange Endpoints
+app.use("/api/v1/exchange", ExchangeRouter);
 
 // Filtered symbols Binance.US supports
 const supportedSymbols = [
@@ -42,7 +49,7 @@ const supportedSymbols = [
   "LTC/USDT",
   "ADA/USDT",
 ];
-connectDB();
+
 
 
 const clientKeyPair = generateKeyPair();

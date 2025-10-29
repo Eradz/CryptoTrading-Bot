@@ -5,8 +5,8 @@ import { createExchangeController, deleteExchangeController, getAllExchangesForU
 const route = express.Router();
 
 
-route.post('/', [], createExchangeController)
-route.get('/', [], getAllExchangesForUserController)
+route.post('/:id', [], createExchangeController)
+route.get('/:id', [], getAllExchangesForUserController)
 route.get('/:id',  getExchangeByIdController)
 route.delete('/:id',  deleteExchangeController)
 

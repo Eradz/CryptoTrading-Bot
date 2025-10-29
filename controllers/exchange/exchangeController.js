@@ -1,21 +1,28 @@
 import AsyncHandler from "express-async-handler";
 import { Exchange } from "../../models/exchangeDetails.js";
 import { AppResponse } from "../../utils/index.js";
+import { decryptKey, encryptKey } from "../../utils/database_manager/database-apikey-manager.js";
+import dotenv from "dotenv"
 
+dotenv.config();
 // CREATE EXCHANGE FOR A USER
 export const createExchangeController = AsyncHandler(async (req, res) => {
-        const { exchangeName, eak, esk } = req.body;
-        const userId = req.id
+
+        const {exchangeName, eak, eas} = req.body;
+        const userId = req.params.id
         // Validate request data
-        if (!exchangeName || !eak || !esk) {
+        if (!exchangeName || !eak || !eas) {
             return AppResponse.error(res, "All fields are required" );
         }
+
+        const encryptedEak = encryptKey(eak);
+        const encryptedEas = encryptKey(eas);
 
         // Create exchange record in the database
         const exchange = await Exchange.create({
             exchangeName,
-            eak,
-            eas,
+            eak: encryptedEak,
+            eas: encryptedEas,
             userId
         });
 
@@ -23,7 +30,7 @@ export const createExchangeController = AsyncHandler(async (req, res) => {
    })
 
    export const getAllExchangesForUserController = AsyncHandler(async (req, res) => {
-       const userId = req.id;
+       const userId = req.params.id;
        // Validate userId
        if (!userId) {
            return AppResponse.error(res, "User ID is required");

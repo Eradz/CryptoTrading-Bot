@@ -17,11 +17,11 @@ export const Exchange = sequelize.define("Exchange",{
         }
     },
     eak: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
     eas: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
     exchangeName: {
