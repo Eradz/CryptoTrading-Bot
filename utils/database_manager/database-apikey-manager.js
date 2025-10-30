@@ -1,27 +1,21 @@
-import {generateKeyPairSync, publicEncrypt, privateDecrypt}  from "crypto"
+import {publicEncrypt, privateDecrypt, constants}  from "crypto"
+import { privateKey, publicKey } from "../keys.js";
 
-const {privateKey, publicKey} = generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-  publicKeyEncoding: {
-    type: "spki",
-    format: "pem"
-  },
-  privateKeyEncoding: {
-    type: "pkcs8",
-    format: "pem"
-  }
-})
+const OAEP_OPTIONS = {
+  padding: constants.RSA_PKCS1_OAEP_PADDING,
+  oaepHash: "sha256"
+};
 // ENCRYPT APIKEY AND APISECRET
 export const encryptKey = (key) => {
   const buffer = Buffer.from(key);
-  const encrypted = publicEncrypt(publicKey, buffer);
+  const encrypted = publicEncrypt({key: publicKey, ...OAEP_OPTIONS}, buffer);
   return encrypted.toString("base64");
 };
 
 // DECRYPT APIKEY AND APISECRET
 export const decryptKey = (encryptedKey) => {
   const buffer = Buffer.from(encryptedKey, "base64");
-  const decrypted = privateDecrypt(privateKey, buffer);
+  const decrypted = privateDecrypt({key: privateKey, ...OAEP_OPTIONS}, buffer);
   return decrypted.toString("utf-8");
 };
 

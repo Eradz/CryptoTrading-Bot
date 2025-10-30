@@ -64,18 +64,18 @@ const allUsersRunningAlgos = {};
 app.get("/api/tradelist/:id", async (req, res) => {
   const userId = req.params.id;
   const api = await getEncryptedApiKeyFromDBAndDecrypt(userId);
-  // const authedBinance = new ccxt.binanceus({
-  //   apiKey: api.apiKey,
-  //   secret: api.apiSecret,
-  //   enableServerTimeSync: true,
-  // });
-  // //to allow for testnet
-  // authedBinance.setSandboxMode(true);
-  // await authedBinance.loadMarkets(true);
+  const authedBinance = new ccxt.binanceus({
+    apiKey: api.apiKey,
+    secret: api.apiSecret,
+    enableServerTimeSync: true,
+  });
+  //to allow for testnet
+  authedBinance.setSandboxMode(true);
+  await authedBinance.loadMarkets(true);
 
-  // authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000);
-  // const orders = authedBinance.fetchOrderBook("BTC/USDT");
-  res.send(api)
+  await authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000);
+  const orders = await authedBinance.fetchOrderBook("BTC/USDT");
+  res.send(orders)
   // Object.keys(authedBinance.markets).filter((symbol) => {
   //   if (symbol.includes("USDT")) return symbol;
   // });

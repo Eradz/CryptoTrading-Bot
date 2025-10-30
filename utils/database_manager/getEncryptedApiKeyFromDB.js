@@ -1,7 +1,6 @@
 import AsyncHandler from "express-async-handler";
 import { Exchange } from "../../models/exchangeDetails.js";
 import { decryptKey } from "./database-apikey-manager.js";
-import e from "express";
 
 
 export const getEncryptedApiKeyFromDBAndDecrypt = AsyncHandler(async (
@@ -12,12 +11,8 @@ export const getEncryptedApiKeyFromDBAndDecrypt = AsyncHandler(async (
     const encryptedApiKey = user.eak;
     const encryptedApiSecret = user.eas;
     const apiKey = decryptKey(encryptedApiKey);
-    // const apiSecret = decryptKey(encryptedApiSecret);
-    console.log("API Key:", encryptedApiKey);
-    console.log("API Secret:", encryptedApiSecret);
-    console.log("Decrypted API Key:", apiKey);
-    // return { apiKey, apiSecret };
-    return { encryptedApiKey, encryptedApiSecret };
+    const apiSecret = decryptKey(encryptedApiSecret);
+    return { apiKey, apiSecret };
   } catch (e) {
     console.log(e);
   }
