@@ -1,6 +1,6 @@
 // GET PORTFOLIO VALUE RECORDS FROM DATABASE
 
-import { getEncryptedApiKeyFromDBAndDecrypt } from "../user/getEncryptedApiKeyFromDB.js"
+import { getEncryptedApiKeyFromDBAndDecrypt } from "../../utils/database_manager/getEncryptedApiKeyFromDB.js"
 import portfolio from "../../utils/portfolio/portfolio-analytics.js"
 
 const getPortfolioValueRecordsFromDB = async (email, client) => {

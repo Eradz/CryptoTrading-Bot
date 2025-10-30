@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import { sequelize } from "../db";
+import { sequelize } from "../db.js";
 
-export const User = sequelize.define("User",{
+export const Exchange = sequelize.define("Exchange",{
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -17,11 +17,11 @@ export const User = sequelize.define("User",{
         }
     },
     eak: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
     eas: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
     },
     exchangeName: {

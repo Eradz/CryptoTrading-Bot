@@ -1,6 +1,6 @@
 // GET PORTFOLIO VALUE
 
-const ccxt = from "ccxt");
+import ccxt from "ccxt";
 const publicBinance = new ccxt.binanceus();
 const getPortfolioValueFromBinance = async (apiKey, apiSecret) => {
   const authedBinance = new ccxt.binanceus({
