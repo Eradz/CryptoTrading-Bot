@@ -1,19 +1,24 @@
 import AsyncHandler from "express-async-handler";
 import { Exchange } from "../../models/exchangeDetails.js";
 import { decryptKey } from "./database-apikey-manager.js";
+import { AppResponse } from "../AppResponse.js";
 
 
 export const getEncryptedApiKeyFromDBAndDecrypt = AsyncHandler(async (
-  userId,
+  {exchangeId, userId}
 ) => {
-  try {
-    const user = await Exchange.findOne({ where: { userId: userId } })
-    const encryptedApiKey = user.eak;
-    const encryptedApiSecret = user.eas;
+    const exchange = await Exchange.findOne({ where: { id: Number(exchangeId), userId: userId } })
+
+    if(!exchange){
+      throw new Error("User's exchange not found");
+    }
+    const encryptedApiKey = exchange.eak;
+    const encryptedApiSecret = exchange.eas;
     const apiKey = decryptKey(encryptedApiKey);
     const apiSecret = decryptKey(encryptedApiSecret);
-    return { apiKey, apiSecret };
-  } catch (e) {
-    console.log(e);
-  }
+    if(!apiKey || !apiSecret) {
+      throw new Error("Failed to decrypt API keys");
+    }
+    return { exchangeName: exchange.exchangeName, apiKey, apiSecret };
+  
 })

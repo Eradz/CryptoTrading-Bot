@@ -10,6 +10,7 @@ import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncrypt
 import AuthRouter from './routes/Auth/AuthRouter.js'
 import UserRouter from "./routes/User/UserRoute.js"
 import ExchangeRouter from "./routes/Exchange/ExchangeRouter.js"
+import TradeRouter from "./routes/Trade/TradeRoute.js"
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
 // import TickerRouter  from "./routes/Ticker/TickerRoute.js"
@@ -73,8 +74,9 @@ app.get("/api/tradelist/:id", async (req, res) => {
   authedBinance.setSandboxMode(true);
   await authedBinance.loadMarkets(true);
 
-  await authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000);
-  const orders = await authedBinance.fetchOrderBook("BTC/USDT");
+  // await authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000,{stop});
+  // await authedBinance.cancelAllOrders("BTC/USDT");
+  const orders = await authedBinance.fetchBalance();
   res.send(orders)
   // Object.keys(authedBinance.markets).filter((symbol) => {
   //   if (symbol.includes("USDT")) return symbol;
@@ -127,7 +129,8 @@ app.use("/api/v1/auth", AuthRouter);
 app.use("/api/v1/users", UserRouter);
 // Exchange Endpoints
 app.use("/api/v1/exchange", ExchangeRouter);
-
+//Trade Endpoints
+app.use("/api/v1/trade", TradeRouter);
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints
