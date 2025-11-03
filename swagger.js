@@ -16,7 +16,12 @@ const options = {
             {
                 url: 'http://localhost:5001',
                 description: 'Development server'
+            },
+            {
+                url: 'https://cryptotrading-bot.onrender.com/',
+                description: 'Production server'
             }
+
         ],
         components: {
             securitySchemes: {
