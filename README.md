@@ -1,4 +1,4 @@
-# Crypto Trading Bot (arwis)
+# Crypto Trading Bot
 
 A Node.js/Express backend for a crypto trading bot that integrates with multiple exchanges via CCXT, supports strategy execution (RSI, Bollinger Bands, MACD), secure API key storage, portfolio analytics, and an API for managing users and exchanges.
 
