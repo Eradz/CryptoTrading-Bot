@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "cross-env mocha './test/**/*.test.js' --reporter spec --timeout 20000",
+    "start": "node index.js",
     "server": "nodemon index.js"
   },
   "author": "",
