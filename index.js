@@ -5,12 +5,15 @@ const origin = "http://localhost:3000";
 import dotenv from "dotenv"
 import express from "express"
 import cors from "cors"
+import swaggerUi from 'swagger-ui-express'
+import { specs } from './swagger.js'
 import { connectDB }  from "./db.js"
 import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncryptedApiKeyToDB.js"
 import AuthRouter from './routes/Auth/AuthRouter.js'
 import UserRouter from "./routes/User/UserRoute.js"
 import ExchangeRouter from "./routes/Exchange/ExchangeRouter.js"
 import TradeRouter from "./routes/Trade/TradeRoute.js"
+import PortfolioRouter from "./routes/portfolio/PortfolioRoute.js"
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
 // import TickerRouter  from "./routes/Ticker/TickerRoute.js"
@@ -31,6 +34,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    explorer: true,
+    customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-themes@3.0.0/themes/3.x/theme-material.css'
+}));
 
 dotenv.config();
 connectDB();
@@ -129,8 +138,10 @@ app.use("/api/v1/auth", AuthRouter);
 app.use("/api/v1/users", UserRouter);
 // Exchange Endpoints
 app.use("/api/v1/exchange", ExchangeRouter);
-//Trade Endpoints
+// Trade Endpoints
 app.use("/api/v1/trade", TradeRouter);
+// Portfolio Endpoints
+app.use("/api/v1/portfolio", PortfolioRouter);
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints

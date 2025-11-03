@@ -1,18 +1,10 @@
 import { RSI, SMA, MACD } from "technicalindicators";
 
 export const RSI_SMA_MACD_COLLABStrategies = (closes) =>{
-    // Sample closing prices (replace with real data)
-    // const closes = [
-    //   100, 102, 101, 103, 105, 108, 110, 112, 115, 118,
-    //   120, 122, 125, 123, 121, 119, 117, 115, 113, 110,
-    //   108, 106, 109, 112, 115, 118, 120, 122, 125, 128,
-    //   130, 132, 135, 133, 131, 129, 127, 125, 123, 120,
-    //   118, 116, 119, 122, 125, 128, 130, 132, 135, 138
-    // ];
-    
+      
     // === INPUTS ===
-    const rsiPeriod = 54;
-    const smaShortPeriod = 50;
+    const rsiPeriod = 14;
+    const smaShortPeriod = 20;
     const smaLongPeriod = 200;
     const macdInput = {
       fastPeriod: 12,
@@ -79,25 +71,26 @@ export const RSI_SMA_MACD_COLLABStrategies = (closes) =>{
       if (signal) {
         signals.push({ index: i, price, signal, rsi: currentRSI.toFixed(2) });
       }
+      
+      console.log(signals)
+    //   // Print row
+    //   console.log(
+    //     `Bar ${String(i).padEnd(8)}`,
+    //     String(price).padEnd(6),
+    //     String(currentRSI.toFixed(1)).padEnd(5),
+    //     String(currentSMA50.toFixed(2)).padEnd(7),
+    //     String(currentSMA200.toFixed(2)).padEnd(8),
+    //     `${currentMACD.MACD.toFixed(3)}/${currentMACD.signal.toFixed(3)}`.padEnd(12),
+    //     signal
+    //   );
+    // }
     
-      // Print row
-      console.log(
-        `Bar ${String(i).padEnd(8)}`,
-        String(price).padEnd(6),
-        String(currentRSI.toFixed(1)).padEnd(5),
-        String(currentSMA50.toFixed(2)).padEnd(7),
-        String(currentSMA200.toFixed(2)).padEnd(8),
-        `${currentMACD.MACD.toFixed(3)}/${currentMACD.signal.toFixed(3)}`.padEnd(12),
-        signal
-      );
+    // // === SUMMARY ===
+    // console.log("\n" + "=".repeat(50));
+    // console.log("SIGNAL SUMMARY");
+    // console.log("=".repeat(50));
+    // signals.forEach(s => {
+    //   console.log(`Bar ${s.index}: ${s.signal} @ $${s.price} (RSI: ${s.rsi})`);
+    // });
     }
-    
-    // === SUMMARY ===
-    console.log("\n" + "=".repeat(50));
-    console.log("SIGNAL SUMMARY");
-    console.log("=".repeat(50));
-    signals.forEach(s => {
-      console.log(`Bar ${s.index}: ${s.signal} @ $${s.price} (RSI: ${s.rsi})`);
-    });
-    
 }
