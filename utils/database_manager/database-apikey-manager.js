@@ -1,33 +1,25 @@
-import JSEncrypt  from "node-jsencrypt"
+import {publicEncrypt, privateDecrypt, constants}  from "crypto"
+import { privateKey, publicKey } from "../keys.js";
 
+const OAEP_OPTIONS = {
+  padding: constants.RSA_PKCS1_OAEP_PADDING,
+  oaepHash: "sha256"
+};
 // ENCRYPT APIKEY AND APISECRET
-const encryptKey = (key, publicKey) => {
-  const encrypt = new JSEncrypt();
-  encrypt.setPublicKey(publicKey);
-  const encryptedKey = encrypt.encrypt(key);
-  return encryptedKey;
+export const encryptKey = (key) => {
+  const buffer = Buffer.from(key);
+  const encrypted = publicEncrypt({key: publicKey, ...OAEP_OPTIONS}, buffer);
+  return encrypted.toString("base64");
 };
 
 // DECRYPT APIKEY AND APISECRET
-const decryptKey = (encryptedKey, privateKey) => {
-  const decrypt = new JSEncrypt();
-  decrypt.setPrivateKey(privateKey);
-  const decryptedKey = decrypt.decrypt(encryptedKey);
-  return decryptedKey
+export const decryptKey = (encryptedKey) => {
+  const buffer = Buffer.from(encryptedKey, "base64");
+  const decrypted = privateDecrypt({key: privateKey, ...OAEP_OPTIONS}, buffer);
+  return decrypted.toString("utf-8");
 };
 
-
-// DELETE USER FROM DATABASE
-const deleteUserFromDB = async (email, client) => {
-  const collection = client.db("arwis").collection("users");
-  try {
-    await collection.deleteOne({ email: email });
-  } catch (e) {
-    console.log(e);
-  }
-};
 const databaseApikeyManager = {
-  deleteUserFromDB,
   encryptKey,
   decryptKey,
 };

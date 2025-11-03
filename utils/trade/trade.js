@@ -1,15 +1,5 @@
-import ccxt from "ccxt"
-
-const trade = async (curPair, side, amountPerc, key, secret, getMarkets) => {
-  const authedBinance = new ccxt.binance({
-    apiKey: key,
-    secret: secret,
-  });
-  authedBinance.setSandboxMode(true);
-  // find object with id in getMarkets array
-  const symbols = Object.keys(getMarkets).filter((symbol) =>
-    symbol.includes("USDT")
-  );
+const trade = async (curPair, side, amountPerc, authedBinance, type, price) => {
+  
   const marketCurPair = curPair.replace("USDT", "/USDT");
   const currency = curPair.replace("USDT", "");
   const allBalances = await authedBinance.fetchBalance();

@@ -5,10 +5,15 @@ const origin = "http://localhost:3000";
 import dotenv from "dotenv"
 import express from "express"
 import cors from "cors"
+import swaggerUi from 'swagger-ui-express'
+import { specs } from './swagger.js'
 import { connectDB }  from "./db.js"
-import {sendEncryptedApiKeyToDB}  from "./controllers/user/sendUserEncryptedApiKeyToDB.js"
-import AuthRouter from './routes/User/UserRoute.js'
-// import {getEncryptedApiKeyFromDBAndDecrypt}  from './controllers/user/getEncryptedApiKeyFromDB.js'
+import {sendEncryptedApiKeyToDB}  from "./utils/database_manager/sendUserEncryptedApiKeyToDB.js"
+import AuthRouter from './routes/Auth/AuthRouter.js'
+import UserRouter from "./routes/User/UserRoute.js"
+import ExchangeRouter from "./routes/Exchange/ExchangeRouter.js"
+import TradeRouter from "./routes/Trade/TradeRoute.js"
+import PortfolioRouter from "./routes/portfolio/PortfolioRoute.js"
 // import AlgorithRouter  from "./routes/algorithms/AlgorithmRoute.js"
 // import WalletRouter  from "./routes/wallets/WalletRoute.js"
 // import TickerRouter  from "./routes/Ticker/TickerRoute.js"
@@ -17,6 +22,7 @@ import ccxt from "ccxt"
 // const publicBinance = new ccxt.binanceus();
 import databaseApikeyManager from "./utils/database_manager/database-apikey-manager.js"
 import { errorHandler } from "./middleware/errorHandler.js"
+import { getEncryptedApiKeyFromDBAndDecrypt } from "./utils/database_manager/getEncryptedApiKeyFromDB.js";
 
 // EXPRESS SERVER INITIALIZATION
 export const app = express();
@@ -29,7 +35,21 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    explorer: true,
+    customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-themes@3.0.0/themes/3.x/theme-material.css'
+}));
+
 dotenv.config();
+connectDB();
+
+// Authentication Endpoints
+app.use("/api/v1/auth", AuthRouter);
+// User Endpoints
+app.use("/api/v1/users", UserRouter);
+// Exchange Endpoints
+app.use("/api/v1/exchange", ExchangeRouter);
 
 // Filtered symbols Binance.US supports
 const supportedSymbols = [
@@ -39,7 +59,6 @@ const supportedSymbols = [
   "LTC/USDT",
   "ADA/USDT",
 ];
-connectDB();
 
 
 
@@ -47,77 +66,82 @@ const clientKeyPair = generateKeyPair();
 const clientPublicKey = clientKeyPair.publicKey;
 const clientPrivateKey = clientKeyPair.privateKey;
 
+
 const dbPublicKey = process.env.DB_PUBLIC_KEY;
-const dbPrivateKey = process.env.DB_PRIVATE_KEY;
 // //////////////////////////////////////////
 const allUsersRunningAlgos = {};
 // //////////////////////////////////////////
-app.get("/api/tradelist/", express.json(), async (req, res) => {
-  // const api = await getEncryptedApiKeyFromDBAndDecrypt(
-  //   req.body.email,
-  //   dbPrivateKey,
-  //   client
-  // );
+app.get("/api/tradelist/:id", async (req, res) => {
+  const userId = req.params.id;
+  const api = await getEncryptedApiKeyFromDBAndDecrypt(userId);
   const authedBinance = new ccxt.binanceus({
-    apiKey: process.env.API_KEY_STAGE,
-    secret: process.env.API_SECRET_STAGE,
-    enableServerTimeSync: true
-    // apiKey: api.apiKey,
-    // secret: api.apiSecret,
+    apiKey: api.apiKey,
+    secret: api.apiSecret,
+    enableServerTimeSync: true,
   });
   //to allow for testnet
   authedBinance.setSandboxMode(true);
   await authedBinance.loadMarkets(true);
 
-  Object.keys(authedBinance.markets).filter((symbol) => {
-    if (symbol.includes("USDT")) return symbol;
-  });
-  // get trades from all symbols
-  const balance = await authedBinance.fetchBalance();
-  const symbolObj = Object.keys(balance.total);
+  // await authedBinance.createOrder("BTC/USDT", "limit", "buy", 0.01, 30000,{stop});
+  // await authedBinance.cancelAllOrders("BTC/USDT");
+  const orders = await authedBinance.fetchBalance();
+  res.send(orders)
+  // Object.keys(authedBinance.markets).filter((symbol) => {
+  //   if (symbol.includes("USDT")) return symbol;
+  // });
+  // // get trades from all symbols
+  // const balance = await authedBinance.fetchBalance();
+  // const symbolObj = Object.keys(balance.total);
   
-  const symbols = symbolObj.map((symbol) => {
-    if (symbol === "USDT" || symbol === "BUSDT") return;
-    return symbol + "/USDT";
-  });
+  // const symbols = symbolObj.map((symbol) => {
+  //   if (symbol === "USDT" || symbol === "BUSDT") return;
+  //   return symbol + "/USDT";
+  // });
   
-  const trades = [];
-  for (let i = 0; i < symbols.length; i++) {
-    if (symbols[i] === undefined || !supportedSymbols.includes(symbols[i]))
-      continue;
-    const symbol = symbols[i];
-    const tradesForSymbol = await authedBinance.fetchOrders(
-      symbol,
-      undefined,
-      5
-    );
-    if (tradesForSymbol.length === 0) continue;
-    tradesForSymbol.forEach((trade) => {
-      trades.push(trade);
-    });
-  }
+  // const trades = [];
+  // for (let i = 0; i < symbols.length; i++) {
+  //   if (symbols[i] === undefined || !supportedSymbols.includes(symbols[i]))
+  //     continue;
+  //   const symbol = symbols[i];
+  //   const tradesForSymbol = await authedBinance.fetchOrders(
+  //     symbol,
+  //     undefined,
+  //     5
+  //   );
+  //   if (tradesForSymbol.length === 0) continue;
+  //   tradesForSymbol.forEach((trade) => {
+  //     trades.push(trade);
+  //   });
+  // }
 
-  const parsedTrades = trades.map((trade) => {
-    let { side, symbol, amount, timestamp } = trade;
+  // const parsedTrades = trades.map((trade) => {
+  //   let { side, symbol, amount, timestamp } = trade;
 
-    amount = amount.toFixed(2);
-    return {
-      side,
-      symbol,
-      amount,
-      timestamp,
-    };
-  });
-  const tradesSortedByDate = parsedTrades.sort((a, b) => {
-    return new Date(b.timestamp) - new Date(a.timestamp);
-  });
+  //   amount = amount.toFixed(2);
+  //   return {
+  //     side,
+  //     symbol,
+  //     amount,
+  //     timestamp,
+  //   };
+  // });
+  // const tradesSortedByDate = parsedTrades.sort((a, b) => {
+  //   return new Date(b.timestamp) - new Date(a.timestamp);
+  // });
 
-  res.send(tradesSortedByDate);
+  // res.send(tradesSortedByDate);
 });
-// //////////////////////////////////////////
-
 // Authentication Endpoints
 app.use("/api/v1/auth", AuthRouter);
+// User Endpoints
+app.use("/api/v1/users", UserRouter);
+// Exchange Endpoints
+app.use("/api/v1/exchange", ExchangeRouter);
+// Trade Endpoints
+app.use("/api/v1/trade", TradeRouter);
+// Portfolio Endpoints
+app.use("/api/v1/portfolio", PortfolioRouter);
 // // ALGORITHM ENDPOINTS
 // app.use("/api/algo/", AlgorithRouter)
 // //Wallet endpoints
@@ -129,17 +153,6 @@ app.use("/api/v1/auth", AuthRouter);
 
 // ////////////////////////////////////////////////////
 // API KEY ENCRYPTION HANDLING/ AuthForm.js ENDPOINTS
-
-// DELETE USER ROUTE
-app.post("/api/delete-user", express.json(), async (req, res) => {
-  try {
-    const email = req.body.email;
-    databaseApikeyManager.deleteUserFromDB(email, client);
-    res.status(200).send();
-  } catch (e) {
-    console.log(e);
-  }
-});
 
 // SEND PUBLIC ENCRYPTION KEY TO CLIENT
 app.post("/api/client-public-key", (req, res) => {

@@ -1,7 +1,7 @@
 {
-  "name": "arwis-server",
+  "name": "crypto-trading-bot",
   "version": "1.0.0",
-  "description": "api endpoints for arwis web app to communicate with binace api and database",
+  "description": "api endpoints for crypto-trading-bot web app to communicate with binance api and database",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -27,6 +27,8 @@
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
     "supertest": "^7.1.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "technicalindicators": "^3.1.0",
     "uuid": "^9.0.0"
   },

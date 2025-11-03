@@ -1,4 +1,3 @@
-import {Response, Request, NextFunction} from "express"
 import { AppResponse } from "../common/utils"
 import AsyncHandler from "express-async-handler"
 import { User } from "../models/userModel"
@@ -12,11 +11,6 @@ export const AdminSessionMiddleWare = AsyncHandler(async (req, res, next) => {
     if (!access_token || access_token === undefined) {
         AppResponse.error(res, "Access token is required, Please login again.")
     }
-    // interface JwtPayload {
-    //     userId: string;
-    //     exp: number;
-    //     iat: number;
-    // }
     
         const decoded = Jwt.verify(access_token, process.env.JWT_SECRET ? process.env.JWT_SECRET : "") 
         const userId = decoded.userId
@@ -40,11 +34,6 @@ export const UserSessionMiddleWare = AsyncHandler(async (req, res, next) => {
     if (!id) {
         return AppResponse.error(res, "Invalid ID");
     }
-    // interface JwtPayload {
-    //     userId: string;
-    //     exp: number;
-    //     iat: number;
-    // }
     
         const decoded = Jwt.verify(access_token, process.env.JWT_SECRET ? process.env.JWT_SECRET : "") 
         const userId = decoded.userId
@@ -60,7 +49,7 @@ export const UserSessionMiddleWare = AsyncHandler(async (req, res, next) => {
         return
     }
     if(user.role === "admin" ){
-        req.id = user.id.toString()
+        req.id = user.id
         next()
         return
     }
