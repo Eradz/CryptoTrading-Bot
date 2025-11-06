@@ -41,5 +41,5 @@ export const loginController = AsyncHandler(async (req , res) => {
 
   // Set cookie and send response
   setCookies(res, "access_token", accessToken);
-  return AppResponse.success(res, `Welcome ${user.username}`, null);
+  return AppResponse.success(res, `Welcome ${user.username}`, user.id);
 });
