@@ -3,6 +3,7 @@ import dotenv from "dotenv"
 import { loginController } from "../../controllers/auth/loginUser.js"
 import { signupController } from "../../controllers/auth/signUpUser.js"
 import { upload } from "../../utils/multer.js"
+import { validate, signupValidation, loginValidation } from "../../utils/validation.js"
 dotenv.config()
 
 const route = express.Router();
@@ -57,7 +58,7 @@ const route = express.Router();
  *                   type: string
  *                   example: "User already exists"
  */
-route.post('/signup', [upload.none()], signupController)
+route.post('/signup', [upload.none()], validate(signupValidation), signupController)
 
 /**
  * @swagger
@@ -110,6 +111,6 @@ route.post('/signup', [upload.none()], signupController)
  *                   type: string
  *                   example: "Invalid email or password"
  */
-route.post('/login', [upload.none()], loginController)
+route.post('/login', [upload.none()], validate(loginValidation), loginController)
 
 export default route;

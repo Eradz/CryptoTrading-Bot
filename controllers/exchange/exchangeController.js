@@ -53,16 +53,17 @@ export const createExchangeController = AsyncHandler(async (req, res) => {
    });
 
    export const getExchangeByIdController = AsyncHandler(async (req, res) => {
-       const { id } = req.params;
+       // Support both /:id and /:userId/:exchangeId route param names
+       const exchangeId = req.params.exchangeId || req.params.id;
 
        // Validate exchangeId
-       if (!id) {
+       if (!exchangeId) {
            return AppResponse.error(res, "Exchange ID is required");
        }
 
        // Fetch exchange by ID
        const exchange = await Exchange.findOne({
-           where: { id }
+           where: { id: exchangeId }
        });
 
        if (!exchange) {

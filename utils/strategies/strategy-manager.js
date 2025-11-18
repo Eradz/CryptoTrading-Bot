@@ -1,15 +1,11 @@
-import { RSI_SMA_MACD_COLLABStrategies } from '../strategies/RSI/RSIstrategy.js';
+import { RSIStrategy } from '../strategies/RSI/RSIStrategy.class.js';
 import { startBollingerBands } from '../strategies/bollingerbands/start-bollinger-bands.js';
 import { logger, alerts } from '../monitoring/monitoring.js';
-
-import { RSI_SMA_MACD_COLLABStrategies } from '../strategies/RSI/RSIstrategy.js';
-import { startBollingerBands } from '../strategies/bollingerbands/start-bollinger-bands.js';
-import { logger, alerts } from '../monitoring/monitoring.js';
+import Strategy from '../../models/strategy.js';
 
 const createStrategyManager = (exchangeClient) => {
+    // Keep active strategies in memory for performance
     const activeStrategies = new Map();
-    const strategyConfigs = new Map();
-    const strategyPerformance = new Map();
 
     const validateStrategyConfig = (config) => {
         const { type, symbol, params, interval } = config;
@@ -38,14 +34,20 @@ const createStrategyManager = (exchangeClient) => {
     const registerStrategy = async (strategyId, config) => {
         try {
             validateStrategyConfig(config);
-            strategyConfigs.set(strategyId, config);
-
-            // Initialize performance tracking
-            strategyPerformance.set(strategyId, {
-                trades: [],
-                winRate: 0,
-                profitLoss: 0,
-                lastUpdated: new Date()
+            
+            await Strategy.create({
+                id: strategyId,
+                type: config.type,
+                symbol: config.symbol,
+                params: config.params,
+                interval: config.interval,
+                status: 'stopped',
+                performance: {
+                    trades: [],
+                    winRate: 0,
+                    profitLoss: 0,
+                    lastUpdated: new Date()
+                }
             });
 
             logger.logTrade({
@@ -63,12 +65,12 @@ const createStrategyManager = (exchangeClient) => {
 
     const startStrategy = async (strategyId) => {
         try {
-            const config = strategyConfigs.get(strategyId);
-            if (!config) {
+            const strategy = await Strategy.findByPk(strategyId);
+            if (!strategy) {
                 throw new Error(`Strategy ${strategyId} not registered`);
             }
 
-            const { type, symbol, params, interval } = config;
+            const { type, symbol, params, interval } = strategy;
 
             let strategyInstance;
             switch (type.toLowerCase()) {
@@ -92,6 +94,7 @@ const createStrategyManager = (exchangeClient) => {
             }
 
             activeStrategies.set(strategyId, strategyInstance);
+            await strategy.update({ status: 'active' });
             alerts.strategyAlert(strategyId, 'STARTED');
             return true;
         } catch (error) {
@@ -112,6 +115,10 @@ const createStrategyManager = (exchangeClient) => {
             }
 
             activeStrategies.delete(strategyId);
+            await Strategy.update(
+                { status: 'stopped' },
+                { where: { id: strategyId } }
+            );
             alerts.strategyAlert(strategyId, 'STOPPED');
             return true;
         } catch (error) {
@@ -122,16 +129,22 @@ const createStrategyManager = (exchangeClient) => {
 
     const updateStrategy = async (strategyId, newConfig) => {
         try {
+            const strategy = await Strategy.findByPk(strategyId);
+            if (!strategy) {
+                throw new Error(`Strategy ${strategyId} not found`);
+            }
+
             if (activeStrategies.has(strategyId)) {
                 await stopStrategy(strategyId);
             }
 
-            const currentConfig = strategyConfigs.get(strategyId);
-            strategyConfigs.set(strategyId, {
-                ...currentConfig,
+            const updatedConfig = {
+                ...strategy.get(),
                 ...newConfig
-            });
+            };
+            validateStrategyConfig(updatedConfig);
 
+            await strategy.update(newConfig);
             await startStrategy(strategyId);
             return true;
         } catch (error) {
@@ -140,14 +153,16 @@ const createStrategyManager = (exchangeClient) => {
         }
     };
 
-    const getStrategyPerformance = (strategyId) => {
-        return strategyPerformance.get(strategyId);
+    const getStrategyPerformance = async (strategyId) => {
+        const strategy = await Strategy.findByPk(strategyId);
+        return strategy ? strategy.performance : null;
     };
 
-    const updateStrategyPerformance = (strategyId, tradeResult) => {
-        const performance = strategyPerformance.get(strategyId);
-        if (!performance) return;
+    const updateStrategyPerformance = async (strategyId, tradeResult) => {
+        const strategy = await Strategy.findByPk(strategyId);
+        if (!strategy) return;
 
+        const performance = strategy.performance;
         performance.trades.push(tradeResult);
         
         const winningTrades = performance.trades.filter(t => t.profit > 0).length;
@@ -155,7 +170,35 @@ const createStrategyManager = (exchangeClient) => {
         performance.profitLoss += tradeResult.profit;
         performance.lastUpdated = new Date();
 
-        strategyPerformance.set(strategyId, performance);
+        await strategy.update({ performance });
+    };
+
+    const createStrategyInstance = async (config) => {
+        try {
+            const { type, symbol, params } = config;
+            validateStrategyConfig(config);
+
+            switch (type.toLowerCase()) {
+                case 'rsi':
+                    return new RSIStrategy({ ...params, symbol });
+                case 'bollinger':
+                    return startBollingerBands(
+                        'backtest',
+                        config.interval || '1h',
+                        symbol,
+                        params.period,
+                        params.standardDev,
+                        null, // No API keys needed for backtest
+                        null,
+                        params.amount
+                    );
+                default:
+                    throw new Error(`Unknown strategy type: ${type}`);
+            }
+        } catch (error) {
+            logger.logError(error, { context: 'createStrategyInstance' });
+            throw error;
+        }
     };
 
     return {
@@ -166,7 +209,11 @@ const createStrategyManager = (exchangeClient) => {
         getStrategyPerformance,
         updateStrategyPerformance,
         getActiveStrategies: () => new Map(activeStrategies),
-        getStrategyConfigs: () => new Map(strategyConfigs)
+        getStrategyConfigs: async () => {
+            const strategies = await Strategy.findAll();
+            return new Map(strategies.map(s => [s.id, s]));
+        },
+        createStrategyInstance
     };
 };
 

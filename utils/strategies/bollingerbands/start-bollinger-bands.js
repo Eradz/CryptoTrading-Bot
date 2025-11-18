@@ -1,9 +1,9 @@
-import { getBollingerBands } from "./bollinger-bands"
-import { trade } from "../../../modules/trade/trade"
+import { getBollingerBands } from "./bollinger-bands.js"
+import { trade } from "../../trade/trade.js"
 import {
   setBBAlgoDB,
   setBBAlgoActiveDB,
-}  from "./bollinger-bands-database"
+}  from "./bollinger-bands-database.js"
 import ccxt from "ccxt"
 //Bollinger Bands needs historical dataset then new datapoint is added every 5 minutes
 let runningBollingerBands = {};

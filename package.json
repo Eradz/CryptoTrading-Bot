@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^7.120.4",
     "bcryptjs": "^3.0.2",
     "ccxt": "^4.5.12",
     "chai": "^6.2.0",
