@@ -7,14 +7,16 @@ import { executeTradeWithRisk } from "../../utils/trade/trade-manager.js";
 const strategyManager = createStrategyManager({});
 
 export const createTradeOrder = AsyncHandler(async (req, res) => {
+
+    // Get Bot configurations
     const { symbol, side, type, amount, price, strategyId } = req.body;
     const userId = req.params.id
     const exchangeId = req.params.exchangeId
-    
+    // Check if there's user id and exchange details
     if(!userId || !exchangeId) {
         return AppResponse.error(res, "User ID and Exchange ID are required");
     }
-    
+    // Get authenticated Exchange instance
     const authenticatedExchange = await AuthenticateExchange({ userId, exchangeId });
     
     try {

@@ -19,6 +19,7 @@ import TradeRouter from "./routes/Trade/TradeRoute.js"
 import PortfolioRouter from "./routes/portfolio/PortfolioRoute.js"
 import StrategyRoute from "./routes/strategies/StrategyRoute.js";
 import BacktestRoute from "./routes/backtesting/BacktestRoute.js";
+import BotRoute from './routes/bot/BotRoute.js'
 import { errorHandler } from "./middleware/errorHandler.js"
 import { startStrategyPollingWorker } from "./utils/strategies/strategy-worker.js";
 
@@ -100,6 +101,9 @@ app.use("/api/v1/portfolio", PortfolioRouter);
 app.use("/api/v1/strategy", StrategyRoute);
 // Backtesting Endpoints
 app.use("/api/v1/backtest", BacktestRoute);
+// Bot Endpoints
+app.use("/api/v1/bots", BotRoute);
+
 // // // PUBLIC API
 // //Binance Ticker&Candle Data
 // app.use("/api/binance", TickerRouter);

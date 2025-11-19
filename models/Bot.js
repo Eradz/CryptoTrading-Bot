@@ -11,8 +11,8 @@ import { sequelize } from "../db.js";
  *         - userId
  *         - exchangeId
  *         - name
- *         - symbol
  *         - strategy
+ *         - symbol
  *       properties:
  *         id:
  *           type: integer
@@ -22,58 +22,33 @@ import { sequelize } from "../db.js";
  *           description: User ID who owns this bot
  *         exchangeId:
  *           type: integer
- *           description: Exchange ID to use
+ *           description: Exchange ID the bot trades on
  *         name:
  *           type: string
  *           description: Bot name
- *         description:
+ *         strategy:
  *           type: string
- *           description: Bot description
+ *           enum: [RSI_SMA_MACD, BOLLINGER_BANDS, HYBRID]
+ *           description: Trading strategy
  *         symbol:
  *           type: string
  *           description: Trading pair (e.g., BTC/USDT)
- *         strategy:
- *           type: string
- *           enum: [rsi, bollinger, both]
- *           description: Trading strategy
  *         interval:
  *           type: string
  *           enum: [1m, 5m, 15m, 30m, 1h, 4h, 1d]
- *           description: Timeframe for analysis
+ *           description: Trading interval
  *         isActive:
  *           type: boolean
  *           description: Whether bot is currently running
- *         riskPercentage:
- *           type: number
- *           description: Risk percentage per trade
- *         riskRewardRatio:
- *           type: number
- *           description: Risk reward ratio
- *         amount:
- *           type: number
- *           description: Fixed trade amount (optional)
- *         strategyOptions:
+ *         parameters:
  *           type: object
- *           description: Strategy-specific options
- *         trailingStop:
+ *           description: Strategy-specific parameters
+ *         riskManagement:
  *           type: object
- *           description: Trailing stop configuration
- *         customExitRules:
+ *           description: Risk management settings
+ *         performance:
  *           type: object
- *           description: Custom exit rules
- *         totalTrades:
- *           type: integer
- *           description: Total number of trades executed
- *         winningTrades:
- *           type: integer
- *           description: Number of winning trades
- *         totalProfit:
- *           type: number
- *           description: Total profit/loss
- *         lastTradeAt:
- *           type: string
- *           format: date-time
- *           description: Last trade execution time
+ *           description: Bot performance metrics
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -106,29 +81,22 @@ export const Bot = sequelize.define("Bot", {
     },
     name: {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            len: [1, 100]
-        }
+        allowNull: false
     },
-    description: {
-        type: DataTypes.TEXT,
-        allowNull: true
+    strategy: {
+        type: DataTypes.ENUM('RSI_SMA_MACD', 'BOLLINGER_BANDS', 'HYBRID'),
+        allowNull: false,
+        defaultValue: 'RSI_SMA_MACD'
     },
     symbol: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-            notEmpty: true
+            is: /^[A-Z]+\/[A-Z]+$/ // Validates format like BTC/USDT
         }
     },
-    strategy: {
-        type: DataTypes.ENUM('rsi', 'bollinger', 'both'),
-        allowNull: false,
-        defaultValue: 'rsi'
-    },
     interval: {
-        type: DataTypes.ENUM('1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'),
+        type: DataTypes.ENUM('1m', '5m', '15m', '30m', '1h', '4h', '1d'),
         allowNull: false,
         defaultValue: '1h'
     },
@@ -137,96 +105,76 @@ export const Bot = sequelize.define("Bot", {
         allowNull: false,
         defaultValue: false
     },
-    riskPercentage: {
-        type: DataTypes.DECIMAL(5, 2),
+    parameters: {
+        type: DataTypes.JSONB,
         allowNull: false,
-        defaultValue: 2.0,
-        validate: {
-            min: 0.1,
-            max: 5.0
+        defaultValue: {
+            rsi: {
+                period: 14,
+                overbought: 70,
+                oversold: 30
+            },
+            sma: {
+                shortPeriod: 20,
+                longPeriod: 200
+            },
+            macd: {
+                fastPeriod: 12,
+                slowPeriod: 26,
+                signalPeriod: 9
+            },
+            bollinger: {
+                period: 20,
+                standardDev: 2
+            }
         }
     },
-    riskRewardRatio: {
-        type: DataTypes.DECIMAL(5, 2),
+    riskManagement: {
+        type: DataTypes.JSONB,
         allowNull: false,
-        defaultValue: 2.0,
-        validate: {
-            min: 1.0,
-            max: 10.0
+        defaultValue: {
+            riskPercentage: 1, // 1% per trade
+            riskRewardRatio: 2, // 1:2 risk:reward
+            maxPositionSize: 10000, // Max position size in USDT
+            maxRiskPerTrade: 2, // Max 2% risk per trade
+            stopLossPercentage: 2, // 2% stop loss
+            takeProfitPercentage: 4 // 4% take profit
         }
     },
-    amount: {
-        type: DataTypes.DECIMAL(20, 8),
-        allowNull: true,
-        validate: {
-            min: 0
+    performance: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: {
+            totalTrades: 0,
+            winningTrades: 0,
+            losingTrades: 0,
+            winRate: 0,
+            totalProfit: 0,
+            totalLoss: 0,
+            netProfit: 0,
+            maxDrawdown: 0,
+            sharpeRatio: 0,
+            lastTradeAt: null,
+            trades: []
         }
-    },
-    strategyOptions: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        defaultValue: {}
-    },
-    trailingStop: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        defaultValue: null
-    },
-    customExitRules: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        defaultValue: {}
-    },
-    // Performance Tracking
-    totalTrades: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-    },
-    winningTrades: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-    },
-    totalProfit: {
-        type: DataTypes.DECIMAL(20, 8),
-        allowNull: false,
-        defaultValue: 0
-    },
-    lastTradeAt: {
-        type: DataTypes.DATE,
-        allowNull: true
     },
     lastError: {
         type: DataTypes.TEXT,
         allowNull: true
+    },
+    errorCount: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     }
-}, {
+}, { 
     timestamps: true,
     indexes: [
         {
-            fields: ['userId', 'isActive']
+            fields: ['userId', 'exchangeId']
         },
         {
-            fields: ['exchangeId']
-        },
-        {
-            fields: ['symbol']
+            fields: ['isActive']
         }
     ]
 });
-
-// Instance methods
-Bot.prototype.calculateWinRate = function() {
-    if (this.totalTrades === 0) return 0;
-    return (this.winningTrades / this.totalTrades) * 100;
-};
-
-Bot.prototype.updatePerformance = function(tradeResult) {
-    this.totalTrades += 1;
-    if (tradeResult.pnl > 0) {
-        this.winningTrades += 1;
-    }
-    this.totalProfit = parseFloat(this.totalProfit) + tradeResult.pnl;
-    this.lastTradeAt = new Date();
-};
