@@ -126,9 +126,45 @@ const getPortfolioDistribution = async (exchangeName, apiKey, apiSecret) => {
     }
 };
 
+
+// Helper to extract assets for DB storage
+const extractPortfolioAssets = (balances, prices) => {
+    const assets = [];
+    const balancesArray = Array.isArray(balances) ? balances : 
+        balances.info?.balances || 
+        Object.entries(balances.total).map(([asset, amount]) => ({
+            asset,
+            free: amount,
+            locked: balances.used?.[asset] || 0
+        }));
+    for (const balance of balancesArray) {
+        const asset = balance.asset || balance.currency || balance[0];
+        const free = parseFloat(balance.free || balance[1] || 0);
+        const locked = parseFloat(balance.locked || balance.used || 0);
+        const total = free + locked;
+        let value = 0;
+        if (asset === "USDT") {
+            value = total;
+        } else {
+            const ticker = prices[`${asset}/USDT`];
+            if (ticker) {
+                const price = ticker.last || ticker.close || ticker.info?.lastPrice;
+                if (price) {
+                    value = total * parseFloat(price);
+                }
+            }
+        }
+        if (total > 0) {
+            assets.push({ asset, free, locked, total, value });
+        }
+    }
+    return assets;
+};
+
 export {
     getPortfolioValue,
     getPortfolioDistribution,
     createPublicExchange,
-    createAuthenticatedExchange
+    createAuthenticatedExchange,
+    extractPortfolioAssets
 };

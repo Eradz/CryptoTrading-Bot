@@ -1,5 +1,6 @@
 import express from "express"
 import { createExchangeController, deleteExchangeController, getAllExchangesForUserController, getExchangeByIdController } from "../../controllers/exchange/exchangeController.js";
+import { validate, exchangeCreateValidation } from "../../utils/validation.js";
 
 /**
  * @swagger
@@ -88,7 +89,7 @@ const route = express.Router();
  *       400:
  *         description: Invalid request or exchange already exists
  */
-route.post('/:id', [], createExchangeController);
+route.post('/:id', validate(exchangeCreateValidation), createExchangeController);
 
 /**
  * @swagger

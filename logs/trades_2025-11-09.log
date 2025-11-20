@@ -1,0 +1,2 @@
+{"timestamp":"2025-11-09T12:51:57.467Z","type":"STRATEGY_REGISTERED","strategyId":"rsi-001","config":{"type":"rsi","symbol":"BTC/USDT","params":{"period":14,"smaShortPeriod":20,"smaLongPeriod":200,"riskPercentage":0.01,"riskRewardRatio":2,"overbought":70,"oversold":30}}}
+{"timestamp":"2025-11-09T13:05:08.773Z","type":"STRATEGY_REGISTERED","strategyId":"rsi-001","config":{"type":"rsi","symbol":"BTC/USDT","params":{"period":14,"smaShortPeriod":20,"smaLongPeriod":200,"riskPercentage":0.01,"riskRewardRatio":2,"overbought":70,"oversold":30}}}

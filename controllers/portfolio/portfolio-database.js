@@ -1,77 +1,52 @@
-// GET PORTFOLIO VALUE RECORDS FROM DATABASE
 
-import { getEncryptedApiKeyFromDBAndDecrypt } from "../../utils/database_manager/getEncryptedApiKeyFromDB.js"
-import portfolio from "../../utils/portfolio/portfolio-analytics.js"
+import { getEncryptedApiKeyFromDBAndDecrypt } from "../../utils/database_manager/getEncryptedApiKeyFromDB.js";
+import { getPortfolioValue, extractPortfolioAssets } from "../../utils/portfolio/portfolio-analytics.js";
+import { persistPortfolioSnapshot } from "./portfolioController.js";
+import UserModel from "../../models/userModel.js";
 
-const getPortfolioValueRecordsFromDB = async (email, client) => {
-  const collection = client.db("arwis").collection("users");
-  try {
-    const user = await collection.find({ email: email }).toArray();
-    if (!user[0].portfolioValueRecord) {
-      return [];
-    } else {
-      return user[0].portfolioValueRecord;
-    }
-  } catch (e) {
-    console.log(e);
-  }
+// Get portfolio value records from Postgres
+const getPortfolioValueRecordsFromDB = async (userId, exchangeId, timeframe = "24h") => {
+  // Use getPortfolioHistoryFromDB from portfolioController
+  const { getPortfolioHistoryFromDB } = await import("./portfolioController.js");
+  return await getPortfolioHistoryFromDB(userId, exchangeId, timeframe);
 };
 
-// SET PORTFOLIO VALUE IN DATABASE
-const startSetPortfolioValueInDB = async (email, client, dbPrivateKey) => {
+// Periodically persist portfolio value in DB for a user/exchange
+const startSetPortfolioValueInDB = async (userId, exchangeId) => {
   try {
-    const api = await getEncryptedApiKeyFromDBAndDecrypt(
-      email,
-      dbPrivateKey,
-      client
-    );
-    const collection = client.db("arwis").collection("users");
-
+    // Get decrypted API keys
+    const { exchangeName, apiKey, apiSecret } = await getEncryptedApiKeyFromDBAndDecrypt({ userId, exchangeId });
+    // Poll and persist every 15 minutes
     setInterval(async () => {
-      const portfolioValue = await portfolio.getPortfolioValueFromBinance(
-        api.apiKey,
-        api.apiSecret
-      );
-      const portfolioValueRecord = {
-        portfolioValue: portfolioValue,
-        timestamp: Date.now(),
-      };
-      if (portfolioValueRecord.portfolioValue) {
-        console.log("SETTING PORTFOLIO VALUE IN DB");
-        console.log(email);
-        console.log(portfolioValueRecord);
-        console.log(" ");
-        await collection.updateOne(
-          { email: email },
-          { $push: { portfolioValueRecord: portfolioValueRecord } },
-          { upsert: true }
-        );
-      } else {
-        console.log("ERROR SETTING PORTFOLIO VALUE IN DB");
-        console.log(email);
-        console.log(portfolioValueRecord);
-        console.log(" ");
+      try {
+        const exchange = await import("../../utils/portfolio/portfolio-analytics.js");
+        const balances = await exchange.createAuthenticatedExchange(exchangeName, apiKey, apiSecret).fetchBalance();
+        const prices = await exchange.createAuthenticatedExchange(exchangeName, apiKey, apiSecret).fetchTickers();
+        const totalValue = await exchange.getPortfolioValue(exchangeName, apiKey, apiSecret);
+        const assets = exchange.extractPortfolioAssets(balances, prices);
+        await persistPortfolioSnapshot({ userId, exchangeId, assets, totalValue });
+        console.log(`Portfolio snapshot persisted for user ${userId}, exchange ${exchangeId}`);
+      } catch (err) {
+        console.error("Error persisting portfolio snapshot:", err);
       }
-    }, 1000 * 60 * 15); // 10 minutes
+    }, 1000 * 60 * 15); // 15 minutes
   } catch (e) {
     console.log(e);
   }
 };
 
-const startSetPortfolioValueInDBforEachUser = async (client, dbPrivateKey) => {
-  //need to get list of users
-  //access db
-  const collection = client.db("arwis").collection("users");
-  const findResult = await collection.find({}).toArray();
-  const emailArr = [];
-  findResult.forEach((result) => {
-    emailArr.push(result.email);
-  });
-  emailArr.forEach((email) => {
-    startSetPortfolioValueInDB(email, client, dbPrivateKey);
-  });
-
-  // run startSetPortfolioValueInDB for each user
+// Start periodic snapshot for all users (example, not wired to routes)
+const startSetPortfolioValueInDBforEachUser = async () => {
+  const users = await UserModel.findAll();
+  for (const user of users) {
+    // You may want to fetch user's exchanges from another model/table
+    // For demo, assume user has an array of exchangeIds
+    if (user.exchangeIds && Array.isArray(user.exchangeIds)) {
+      for (const exchangeId of user.exchangeIds) {
+        startSetPortfolioValueInDB(user.id, exchangeId);
+      }
+    }
+  }
 };
 
 export {
