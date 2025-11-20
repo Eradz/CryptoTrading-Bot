@@ -368,7 +368,12 @@ class TradingEngine {
                 this.bot.symbol,
                 'market',
                 signal.action,
-                positionSize
+                positionSize,
+                currentPrice,
+                {
+                    takeProfitPrice: signal.action === 'buy' ? takeProfit : stopLoss,
+                    stopLossPrice: signal.action === 'buy' ? stopLoss : takeProfit
+                }
             );
 
             logger.logTrade({

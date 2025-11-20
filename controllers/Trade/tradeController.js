@@ -3,6 +3,8 @@ import { AppResponse } from "../../utils/index.js";
 import { AuthenticateExchange } from "../../utils/AuthenticateExchange.js";
 import { createStrategyManager } from "../../utils/strategies/strategy-manager.js";
 import { executeTradeWithRisk } from "../../utils/trade/trade-manager.js";
+import { Exchange } from "../../models/exchangeDetails.js";
+import ccxt from "ccxt";
 
 const strategyManager = createStrategyManager({});
 
@@ -111,5 +113,28 @@ export const createTradeOrder = AsyncHandler(async (req, res) => {
     } catch (e) {
         console.error('Trade execution error:', e);
         return AppResponse.error(res, e.message || 'Trade execution failed');
+    }
+});
+
+export const getTradeHistory = AsyncHandler(async (req, res) => {
+    const { userId, exchangeId } = req.params;
+    const {symbol} = req.body
+
+    try {
+        // Get exchange details
+        const exchange = await Exchange.findOne({ exchangeId });
+        if (!exchange) {
+            return AppResponse.error(res, `Exchange ${exchangeId} not found`, 404);
+        }
+
+        const userExchange = await AuthenticateExchange({ userId, exchangeId });
+        if (!userExchange) {
+            return AppResponse.error(res, `User exchange ${exchangeId} not found`, 404);
+        }
+        const orders = await userExchange.fetchOrders(symbol);
+        return AppResponse.success(res, 'Trade history retrieved successfully', { orders });
+    } catch (e) {
+        console.error('Error retrieving trade history:', e);
+        return AppResponse.error(res, e.message || 'Failed to retrieve trade history');
     }
 });
