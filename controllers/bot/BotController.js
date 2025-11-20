@@ -142,7 +142,6 @@ export const startBotController = AsyncHandler(async (req, res) => {
 
     const bot = await Bot.findByPk(botId);
     try {
-
         if (!bot) {
             return AppResponse.error(res, "Bot not found");
         }
