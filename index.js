@@ -98,15 +98,11 @@ app.use("/api/v1/trade", TradeRouter);
 // Portfolio Endpoints
 app.use("/api/v1/portfolio", PortfolioRouter);
 // Strategy Endpoints
-app.use("/api/v1/strategy", StrategyRoute);
+// app.use("/api/v1/strategy", StrategyRoute);
 // Backtesting Endpoints
 app.use("/api/v1/backtest", BacktestRoute);
 // Bot Endpoints
 app.use("/api/v1/bots", BotRoute);
-
-// // // PUBLIC API
-// //Binance Ticker&Candle Data
-// app.use("/api/binance", TickerRouter);
 
 // ////////////////////////////////////////////////////
 // API KEY ENCRYPTION HANDLING/ AuthForm.js ENDPOINTS
@@ -125,5 +121,5 @@ app.use(errorHandler);
 // START SERVER LISTENER
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
-  startStrategyPollingWorker();
+  // startStrategyPollingWorker();
 });
