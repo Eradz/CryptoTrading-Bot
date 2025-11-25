@@ -8,7 +8,73 @@ import { TradingEngine } from "../../utils/trade/tradingEngine.js";
 const activeBots = new Map();
 
 /**
- * Create a new trading bot
+ * Bot Templates - Pre-configured with optimal defaults
+ */
+const BOT_TEMPLATES = {
+    RSI_SMA_MACD: {
+        name: "RSI + SMA + MACD Strategy",
+        description: "Momentum-based strategy combining RSI overbought/oversold with SMA crossovers and MACD confirmation",
+        strategy: "RSI_SMA_MACD",
+        interval: "1h",
+        parameters: {
+            rsi: { period: 14, overbought: 70, oversold: 30 },
+            sma: { shortPeriod: 20, longPeriod: 200 },
+            macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }
+        },
+        riskManagement: {
+            riskPercentage: 1,
+            riskRewardRatio: 2,
+            maxPositionSize: 10000,
+            maxRiskPerTrade: 2,
+            stopLossPercentage: 2,
+            takeProfitPercentage: 4
+        },
+        estimatedWinRate: "55-65%"
+    },
+    BOLLINGER_BANDS: {
+        name: "Bollinger Bands Strategy",
+        description: "Mean-reversion strategy using Bollinger Bands with volatility confirmation",
+        strategy: "BOLLINGER_BANDS",
+        interval: "1h",
+        parameters: {
+            bollinger: { period: 20, standardDev: 2 },
+            rsi: { period: 14, overbought: 70, oversold: 30 }
+        },
+        riskManagement: {
+            riskPercentage: 1,
+            riskRewardRatio: 1.5,
+            maxPositionSize: 5000,
+            maxRiskPerTrade: 1.5,
+            stopLossPercentage: 3,
+            takeProfitPercentage: 4.5
+        },
+        estimatedWinRate: "50-60%"
+    },
+    HYBRID: {
+        name: "Hybrid Multi-Strategy",
+        description: "Conservative strategy combining multiple indicators with high confidence signals (Recommended for beginners)",
+        strategy: "HYBRID",
+        interval: "4h",
+        parameters: {
+            rsi: { period: 14, overbought: 70, oversold: 30 },
+            sma: { shortPeriod: 20, longPeriod: 200 },
+            macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+            bollinger: { period: 20, standardDev: 2 }
+        },
+        riskManagement: {
+            riskPercentage: 0.5,
+            riskRewardRatio: 3,
+            maxPositionSize: 8000,
+            maxRiskPerTrade: 1,
+            stopLossPercentage: 1.5,
+            takeProfitPercentage: 4.5
+        },
+        estimatedWinRate: "65-75%"
+    }
+};
+
+/**
+ * Create a new trading bot with full configuration
  */
 export const createBotController = AsyncHandler(async (req, res) => {
     const { name, strategy, symbol, interval, parameters, riskManagement } = req.body;
@@ -42,6 +108,92 @@ export const createBotController = AsyncHandler(async (req, res) => {
         return AppResponse.success(res, "Bot created successfully", bot);
     } catch (error) {
         return AppResponse.error(res, error.message);
+    }
+});
+
+/**
+ * Create a trading bot with simplified one-click template selection
+ * User selects bot type and it's auto-configured with optimal defaults
+ */
+export const createBotFromTemplateController = AsyncHandler(async (req, res) => {
+    const { botType, symbol, name } = req.body;
+    const userId = req.params.userId;
+    const exchangeId = req.params.exchangeId;
+
+    // Validate inputs
+    if (!userId || !exchangeId) {
+        return AppResponse.error(res, "User ID and Exchange ID are required", 400);
+    }
+
+    if (!botType || !symbol) {
+        return AppResponse.error(res, "Bot type and symbol are required", 400);
+    }
+
+    // Validate bot type is in templates
+    if (!BOT_TEMPLATES[botType]) {
+        const validTypes = Object.keys(BOT_TEMPLATES);
+        return AppResponse.error(res, `Invalid bot type. Valid options: ${validTypes.join(', ')}`, 400);
+    }
+
+    // Validate symbol format
+    if (!/^[A-Z]+\/[A-Z]+$/.test(symbol)) {
+        return AppResponse.error(res, "Symbol must be in format like BTC/USDT", 400);
+    }
+
+    try {
+        // Validate exchange exists
+        await AuthenticateExchange({ userId, exchangeId });
+
+        // Get template
+        const template = BOT_TEMPLATES[botType];
+
+        // Create bot with template configuration
+        const botName = name || `${template.name} - ${symbol}`;
+        
+        const bot = await Bot.create({
+            userId,
+            exchangeId,
+            name: botName,
+            strategy: template.strategy,
+            symbol,
+            interval: template.interval,
+            parameters: template.parameters,
+            riskManagement: template.riskManagement,
+            isActive: false
+        });
+
+        return AppResponse.success(res, "Bot created successfully with template configuration", {
+            bot,
+            template: {
+                description: template.description,
+                estimatedWinRate: template.estimatedWinRate
+            },
+            status: "Bot created and ready to activate"
+        }, 201);
+    } catch (error) {
+        return AppResponse.error(res, error.message, 500);
+    }
+});
+
+/**
+ * Get available bot templates
+ */
+export const getBotTemplatesController = AsyncHandler(async (req, res) => {
+    try {
+        const templates = Object.entries(BOT_TEMPLATES).map(([key, value]) => ({
+            id: key,
+            name: value.name,
+            description: value.description,
+            strategy: value.strategy,
+            interval: value.interval,
+            estimatedWinRate: value.estimatedWinRate,
+            riskProfile: value.riskManagement.riskPercentage <= 0.5 ? 'Conservative' : 
+                        value.riskManagement.riskPercentage === 1 ? 'Moderate' : 'Aggressive'
+        }));
+
+        return AppResponse.success(res, "Bot templates retrieved successfully", templates);
+    } catch (error) {
+        return AppResponse.error(res, error.message, 500);
     }
 });
 
