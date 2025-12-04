@@ -79,11 +79,103 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
         const circuitBreaker = exchangeCircuitBreakers[exchangeName];
         console.log("Circuit Breaker:", circuitBreaker);
         console.log("Exchange:", exchangeName);
+        // Fetch current best bid/ask for validation
+        let extraParams = {};
+        const ticker = await exchangeClient.fetchTicker(symbol);
+        const bestAsk = ticker.ask;
+        const bestBid = ticker.bid;
+        const minDistancePercent = 0.01; // 1%
+        const minStopDistance = price * minDistancePercent;
+        console.log(`[TRADE PARAMS] Entry: ${price}, StopLoss: ${stopLoss}, TakeProfit: ${takeProfit}, Side: ${side}, BestAsk: ${bestAsk}, BestBid: ${bestBid}`);
+
+        // STOP_LOSS_LIMIT and TAKE_PROFIT_LIMIT validation
+        if (type === 'STOP_LOSS_LIMIT' || type === 'TAKE_PROFIT_LIMIT') {
+            if (side === 'sell') {
+                // stopPrice must be below best bid
+                if (stopLoss < bestBid) {
+                    extraParams.stopLossPrice = stopLoss;
+                } else {
+                    const adjustedStop = bestBid - minStopDistance;
+                    extraParams.stopLossPrice = adjustedStop;
+                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (must be < bestBid)`);
+                }
+            } else if (side === 'buy') {
+                // stopPrice must be above best ask
+                if (stopLoss > bestAsk) {
+                    extraParams.stopLossPrice = stopLoss;
+                } else {
+                    const adjustedStop = bestAsk + minStopDistance;
+                    extraParams.stopLossPrice = adjustedStop;
+                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (must be > bestAsk)`);
+                }
+            }
+            // Take profit logic (similar, but usually not immediately triggerable)
+            extraParams.takeProfitPrice = takeProfit;
+        }
+
+        // LIMIT_MAKER validation
+        if (type === 'LIMIT_MAKER') {
+            if (side === 'buy') {
+                // price must be below best ask
+                if (price < bestAsk) {
+                    // valid
+                } else {
+                    const adjustedPrice = bestAsk - minStopDistance;
+                    console.warn(`[TRADE WARNING] Adjusted LIMIT_MAKER price from ${price} to ${adjustedPrice} (must be < bestAsk)`);
+                    tradeParams.price = adjustedPrice;
+                }
+            } else if (side === 'sell') {
+                // price must be above best bid
+                if (price > bestBid) {
+                    // valid
+                } else {
+                    const adjustedPrice = bestBid + minStopDistance;
+                    console.warn(`[TRADE WARNING] Adjusted LIMIT_MAKER price from ${price} to ${adjustedPrice} (must be > bestBid)`);
+                    tradeParams.price = adjustedPrice;
+                }
+            }
+        }
+
+        // For other types, keep previous min distance logic
+        if (type !== 'STOP_LOSS_LIMIT' && type !== 'TAKE_PROFIT_LIMIT' && type !== 'LIMIT_MAKER') {
+            if (side === 'buy') {
+                if (stopLoss < price - minStopDistance) {
+                    extraParams.stopLossPrice = stopLoss;
+                } else {
+                    const adjustedStop = price - minStopDistance;
+                    extraParams.stopLossPrice = adjustedStop;
+                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (min distance)`);
+                }
+                if (takeProfit > price + minStopDistance) {
+                    extraParams.takeProfitPrice = takeProfit;
+                } else {
+                    const adjustedTake = price + minStopDistance;
+                    extraParams.takeProfitPrice = adjustedTake;
+                    console.warn(`[TRADE WARNING] Adjusted takeProfitPrice from ${takeProfit} to ${adjustedTake} (min distance)`);
+                }
+            } else if (side === 'sell') {
+                if (stopLoss > price + minStopDistance) {
+                    extraParams.stopLossPrice = stopLoss;
+                } else {
+                    const adjustedStop = price + minStopDistance;
+                    extraParams.stopLossPrice = adjustedStop;
+                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (min distance)`);
+                }
+                if (takeProfit < price - minStopDistance) {
+                    extraParams.takeProfitPrice = takeProfit;
+                } else {
+                    const adjustedTake = price - minStopDistance;
+                    extraParams.takeProfitPrice = adjustedTake;
+                    console.warn(`[TRADE WARNING] Adjusted takeProfitPrice from ${takeProfit} to ${adjustedTake} (min distance)`);
+                }
+            }
+        }
+
         // Execute main trade with retry logic and circuit breaker
         let mainOrder;
-        
         try {
             if (circuitBreaker) {
+                console.log(extraParams, price)
                 mainOrder = await circuitBreaker.execute(async () => {
                     return await retryWithBackoff(
                         () => trade(
@@ -92,7 +184,8 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                             positionSize,
                             exchangeClient,
                             type,
-                            price
+                            price,
+                            extraParams
                         ),
                         {
                             maxRetries: 3,
@@ -109,13 +202,15 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                     );
                 });
             } else {
+                console.log(extraParams, price)
                 mainOrder = await trade(
                     symbol,
                     side,
                     positionSize,
                     exchangeClient,
                     type,
-                    price
+                    price,
+                    extraParams
                 );
             }
         } catch (error) {

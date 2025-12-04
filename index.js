@@ -1,10 +1,11 @@
 // API
-const origin = [ "https://cryptotrading-bot.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000", "https://trade-b.vercel.app"];
+const origin = [ "https://cryptotrading-bot.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000", "https://trade-b.vercel.app", "http://localhost:8080", "https://trading-bot-frontend-phi.vercel.app"];
 
 // Server and Database Packages
 import dotenv from "dotenv"
 import express from "express"
 import cors from "cors"
+import cookieParser from'cookie-parser';
 import swaggerUi from 'swagger-ui-express'
 import * as Sentry from "@sentry/node"
 import { specs } from './swagger.js'
@@ -22,10 +23,11 @@ import BacktestRoute from "./routes/backtesting/BacktestRoute.js";
 import BotRoute from './routes/bot/BotRoute.js'
 import { errorHandler } from "./middleware/errorHandler.js"
 import { startStrategyPollingWorker } from "./utils/strategies/strategy-worker.js";
+import { startBotPerformanceSyncWorker } from "./utils/bot-performance/bot-performance-sync.js";
 
 // EXPRESS SERVER INITIALIZATION
 export const app = express();
-const port = process.env.PORT || 5001;
+const port = process.env.PORT || 5000;
 
 // Initialize Sentry
 dotenv.config();
@@ -42,8 +44,10 @@ if (process.env.SENTRY_DSN) {
 const corsOptions = {
   origin: origin,
   optionsSuccessStatus: 200,
+  credentials: true
 };
 connectDB()
+app.use(cookieParser()); 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -122,4 +126,7 @@ app.use(errorHandler);
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
   // startStrategyPollingWorker();
+  
+  // Start bot performance sync worker (updates performance metrics every 30 seconds)
+  startBotPerformanceSyncWorker(30);
 });

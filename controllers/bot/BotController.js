@@ -427,39 +427,86 @@ export const getBotPerformanceController = AsyncHandler(async (req, res) => {
 
 /**
  * Update bot performance after trade
+ * IMPORTANT: This function is called after a trade is executed to update the bot's performance metrics
  */
 export const updateBotPerformance = async (botId, tradeResult) => {
     try {
         const bot = await Bot.findByPk(botId);
-        if (!bot) return;
+        if (!bot) {
+            console.warn(`[updateBotPerformance] Bot ${botId} not found`);
+            return null;
+        }
 
-        const performance = bot.performance;
-        const profit = tradeResult.profit || 0;
+        // Get existing performance or initialize
+        const performance = bot.performance || {
+            totalTrades: 0,
+            winningTrades: 0,
+            losingTrades: 0,
+            winRate: 0,
+            totalProfit: 0,
+            totalLoss: 0,
+            netProfit: 0,
+            maxDrawdown: 0,
+            sharpeRatio: 0,
+            lastTradeAt: null,
+            trades: []
+        };
+
+        // Extract profit from various possible sources
+        const profit = tradeResult.profitLoss || tradeResult.profit || 0;
 
         // Update trade counts
-        performance.totalTrades += 1;
+        performance.totalTrades = (performance.totalTrades || 0) + 1;
+        
         if (profit > 0) {
-            performance.winningTrades += 1;
-            performance.totalProfit += profit;
-        } else {
-            performance.losingTrades += 1;
-            performance.totalLoss += Math.abs(profit);
+            performance.winningTrades = (performance.winningTrades || 0) + 1;
+            performance.totalProfit = (performance.totalProfit || 0) + profit;
+        } else if (profit < 0) {
+            performance.losingTrades = (performance.losingTrades || 0) + 1;
+            performance.totalLoss = (performance.totalLoss || 0) + Math.abs(profit);
         }
 
         // Calculate metrics
-        performance.winRate = (performance.winningTrades / performance.totalTrades) * 100;
-        performance.netProfit = performance.totalProfit - performance.totalLoss;
+        if (performance.totalTrades > 0) {
+            performance.winRate = (performance.winningTrades / performance.totalTrades) * 100;
+        } else {
+            performance.winRate = 0;
+        }
+        
+        performance.netProfit = (performance.totalProfit || 0) - (performance.totalLoss || 0);
         performance.lastTradeAt = new Date();
 
         // Store trade history (keep last 100 trades)
-        performance.trades.unshift(tradeResult);
+        if (!Array.isArray(performance.trades)) {
+            performance.trades = [];
+        }
+
+        // Add trade with metadata
+        performance.trades.unshift({
+            ...tradeResult,
+            recordedAt: new Date()
+        });
+
+        // Keep only last 100 trades
         if (performance.trades.length > 100) {
             performance.trades = performance.trades.slice(0, 100);
         }
 
+        // Update bot
         await bot.update({ performance });
+
+        console.log(`[updateBotPerformance] Updated bot ${botId}:`, {
+            totalTrades: performance.totalTrades,
+            winRate: `${performance.winRate.toFixed(2)}%`,
+            netProfit: performance.netProfit.toFixed(2)
+        });
+
+        return performance;
+
     } catch (error) {
-        console.error('Error updating bot performance:', error);
+        console.error(`[updateBotPerformance] Error updating bot ${botId}:`, error.message);
+        // Don't re-throw to prevent trade execution from failing
+        return null;
     }
 };
 
