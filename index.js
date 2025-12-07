@@ -1,5 +1,5 @@
 // API
-const origin = [ "https://cryptotrading-bot.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000", "https://trade-b.vercel.app"];
+const origin = [ "https://cryptotrading-bot.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000", "https://trade-b.vercel.app", "https://trading-bot-frontend-phi.vercel.app"];
 
 // Server and Database Packages
 import dotenv from "dotenv"
