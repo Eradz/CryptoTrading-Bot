@@ -22,12 +22,12 @@ export const calculateBotPerformanceFromTrades = async (botId) => {
             throw new Error(`Bot ${botId} not found`);
         }
 
-        // Get all filled trades for this bot
+        // Get all trades for this bot (we'll compute stats using filled trades)
         const trades = await Trade.findAll({
             where: {
-                exchangeOrderId: null, // Placeholder - adjust based on actual relationship
-                status: 'filled'
+                strategyId: botId
             },
+            order: [['createdAt', 'ASC']],
             raw: true
         });
 
@@ -50,23 +50,24 @@ export const calculateBotPerformanceFromTrades = async (botId) => {
             };
         }
 
-        // Calculate metrics
-        const winningTrades = trades.filter(t => (t.profitLoss || 0) > 0);
-        const losingTrades = trades.filter(t => (t.profitLoss || 0) < 0);
+        // Only consider filled trades for P&L statistics
+        const filledTrades = trades.filter(t => t.status === 'filled');
+        const winningTrades = filledTrades.filter(t => (t.profitLoss || 0) > 0);
+        const losingTrades = filledTrades.filter(t => (t.profitLoss || 0) < 0);
 
-        const totalProfit = trades
+        const totalProfit = filledTrades
             .filter(t => (t.profitLoss || 0) > 0)
             .reduce((sum, t) => sum + (t.profitLoss || 0), 0);
 
         const totalLoss = Math.abs(
-            trades
+            filledTrades
                 .filter(t => (t.profitLoss || 0) < 0)
                 .reduce((sum, t) => sum + (t.profitLoss || 0), 0)
         );
 
         const netProfit = totalProfit - totalLoss;
-        const winRate = trades.length > 0 
-            ? (winningTrades.length / trades.length) * 100 
+        const winRate = filledTrades.length > 0 
+            ? (winningTrades.length / filledTrades.length) * 100 
             : 0;
 
         // Calculate max drawdown
@@ -74,7 +75,7 @@ export const calculateBotPerformanceFromTrades = async (botId) => {
         let maxDrawdown = 0;
         let runningProfit = 0;
 
-        for (const trade of trades) {
+        for (const trade of filledTrades) {
             runningProfit += trade.profitLoss || 0;
             if (runningProfit > peak) {
                 peak = runningProfit;
@@ -86,7 +87,7 @@ export const calculateBotPerformanceFromTrades = async (botId) => {
         }
 
         // Calculate Sharpe Ratio
-        const returns = trades.map(t => t.profitLoss || 0);
+    const returns = filledTrades.map(t => t.profitLoss || 0);
         const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
         const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
         const stdDev = Math.sqrt(variance);

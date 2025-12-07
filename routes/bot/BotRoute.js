@@ -9,7 +9,9 @@ import {
     startBotController,
     stopBotController,
     deleteBotController,
-    getBotPerformanceController
+    getBotPerformanceController,
+    stopAllBotsController,
+    stopIndividualBotController
 } from "../../controllers/bot/BotController.js";
 
 const router = express.Router();
@@ -378,5 +380,149 @@ router.delete('/bot/:botId', deleteBotController);
  *         description: Bot not found
  */
 router.get('/bot/:botId/performance', getBotPerformanceController);
+
+/**
+ * @swagger
+ * /api/v1/bots/{userId}/stop-all:
+ *   post:
+ *     summary: Stop all active bots for a user
+ *     tags: [Bots]
+ *     description: Globally stops all active bots, cancels all open trades, and updates their statuses. This is a destructive operation that will immediately halt all trading activity.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: All bots stopped successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All bots stopped successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     botsStoppedCount:
+ *                       type: integer
+ *                       example: 3
+ *                       description: Total number of bots stopped
+ *                     tradesCancelledCount:
+ *                       type: integer
+ *                       example: 7
+ *                       description: Total number of open trades cancelled
+ *                     summary:
+ *                       type: string
+ *                       example: "Stopped 3 bot(s) and cancelled 7 trade(s)"
+ *                     details:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           botId:
+ *                             type: string
+ *                           botName:
+ *                             type: string
+ *                           tradesCancelled:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                             enum: [stopped, error]
+ *       400:
+ *         description: Invalid request - User ID required
+ *       500:
+ *         description: Server error
+ */
+router.post('/:userId/stop-all', stopAllBotsController);
+
+/**
+ * @swagger
+ * /api/v1/bots/{botId}/{userId}/stop:
+ *   post:
+ *     summary: Stop an individual bot
+ *     tags: [Bots]
+ *     description: Stops a specific bot, cancels all its open trades, and updates its status. The bot must belong to the authenticated user.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: botId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bot ID to stop
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID (must own the bot)
+ *     responses:
+ *       200:
+ *         description: Bot stopped successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Bot stopped successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     botId:
+ *                       type: string
+ *                     botName:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [stopped, already_inactive]
+ *                     tradesCancelledCount:
+ *                       type: integer
+ *                       example: 2
+ *                     cancelledTrades:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           tradeId:
+ *                             type: integer
+ *                           exchangeOrderId:
+ *                             type: string
+ *                           symbol:
+ *                             type: string
+ *                           side:
+ *                             type: string
+ *                             enum: [buy, sell]
+ *                           quantity:
+ *                             type: number
+ *                     summary:
+ *                       type: string
+ *                       example: 'Stopped bot "My BTC Bot" and cancelled 2 open trade(s)'
+ *       400:
+ *         description: Invalid request - Bot ID and User ID required
+ *       403:
+ *         description: Unauthorized - Bot does not belong to user
+ *       404:
+ *         description: Bot not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/:botId/:userId/stop', stopIndividualBotController);
 
 export default router;
