@@ -1,6 +1,7 @@
 import AsyncHandler from "express-async-handler";
 import { AppResponse } from "../../utils/index.js";
 import { Bot } from "../../models/Bot.js";
+import Trade from "../../models/Trade.js";
 import { AuthenticateExchange } from "../../utils/AuthenticateExchange.js";
 import { TradingEngine } from "../../utils/trade/tradingEngine.js";
 
@@ -437,71 +438,101 @@ export const updateBotPerformance = async (botId, tradeResult) => {
             return null;
         }
 
-        // Get existing performance or initialize
-        const performance = bot.performance || {
-            totalTrades: 0,
-            winningTrades: 0,
-            losingTrades: 0,
-            winRate: 0,
-            totalProfit: 0,
-            totalLoss: 0,
-            netProfit: 0,
-            maxDrawdown: 0,
-            sharpeRatio: 0,
-            lastTradeAt: null,
-            trades: []
-        };
+            // Get existing performance or initialize (ensure openTrades present)
+            const performance = bot.performance || {};
+            performance.totalTrades = performance.totalTrades || 0;
+            performance.openTrades = performance.openTrades || 0;
+            performance.winningTrades = performance.winningTrades || 0;
+            performance.losingTrades = performance.losingTrades || 0;
+            performance.winRate = performance.winRate || 0;
+            performance.totalProfit = performance.totalProfit || 0;
+            performance.totalLoss = performance.totalLoss || 0;
+            performance.netProfit = performance.netProfit || 0;
+            performance.maxDrawdown = performance.maxDrawdown || 0;
+            performance.sharpeRatio = performance.sharpeRatio || 0;
+            performance.lastTradeAt = performance.lastTradeAt || null;
+            if (!Array.isArray(performance.trades)) performance.trades = [];
 
-        // Extract profit from various possible sources
-        const profit = tradeResult.profitLoss || tradeResult.profit || 0;
+            // Normalize incoming trade data
+            const profit = tradeResult.profitLoss ?? tradeResult.profit ?? null;
+            const status = tradeResult.status || (profit !== null ? 'filled' : 'open');
+            const tradeId = tradeResult.id || tradeResult.exchangeOrderId || null;
 
-        // Update trade counts
-        performance.totalTrades = (performance.totalTrades || 0) + 1;
-        
-        if (profit > 0) {
-            performance.winningTrades = (performance.winningTrades || 0) + 1;
-            performance.totalProfit = (performance.totalProfit || 0) + profit;
-        } else if (profit < 0) {
-            performance.losingTrades = (performance.losingTrades || 0) + 1;
-            performance.totalLoss = (performance.totalLoss || 0) + Math.abs(profit);
-        }
+            // Try to find existing trade in history
+            const existingIndex = performance.trades.findIndex(t => (t.id && tradeId && t.id === tradeId) || (t.exchangeOrderId && tradeId && t.exchangeOrderId === tradeId));
 
-        // Calculate metrics
-        if (performance.totalTrades > 0) {
-            performance.winRate = (performance.winningTrades / performance.totalTrades) * 100;
-        } else {
-            performance.winRate = 0;
-        }
-        
-        performance.netProfit = (performance.totalProfit || 0) - (performance.totalLoss || 0);
-        performance.lastTradeAt = new Date();
+            if (existingIndex >= 0) {
+                // Update existing trade entry
+                const existing = performance.trades[existingIndex];
+                const prevStatus = existing.status || 'open';
 
-        // Store trade history (keep last 100 trades)
-        if (!Array.isArray(performance.trades)) {
-            performance.trades = [];
-        }
+                // Replace/merge the entry
+                performance.trades[existingIndex] = {
+                    ...existing,
+                    ...tradeResult,
+                    recordedAt: new Date()
+                };
 
-        // Add trade with metadata
-        performance.trades.unshift({
-            ...tradeResult,
-            recordedAt: new Date()
-        });
+                // Handle status transition open -> filled
+                if (prevStatus !== 'filled' && status === 'filled') {
+                    // Decrement openTrades if present
+                    performance.openTrades = Math.max(0, (performance.openTrades || 0) - 1);
 
-        // Keep only last 100 trades
-        if (performance.trades.length > 100) {
-            performance.trades = performance.trades.slice(0, 100);
-        }
+                    // Increment filled trade counters
+                    performance.totalTrades = (performance.totalTrades || 0) + 1;
+                    if (profit > 0) {
+                        performance.winningTrades = (performance.winningTrades || 0) + 1;
+                        performance.totalProfit = (performance.totalProfit || 0) + profit;
+                    } else if (profit < 0) {
+                        performance.losingTrades = (performance.losingTrades || 0) + 1;
+                        performance.totalLoss = (performance.totalLoss || 0) + Math.abs(profit);
+                    }
+                    performance.lastTradeAt = tradeResult.filledAt ? new Date(tradeResult.filledAt) : new Date();
+                }
+            } else {
+                // New trade - insert at front
+                performance.trades.unshift({
+                    ...tradeResult,
+                    recordedAt: new Date()
+                });
 
-        // Update bot
-        await bot.update({ performance });
+                if (status === 'filled') {
+                    // Filled trade - counts toward completed trades
+                    performance.totalTrades = (performance.totalTrades || 0) + 1;
+                    if (profit > 0) {
+                        performance.winningTrades = (performance.winningTrades || 0) + 1;
+                        performance.totalProfit = (performance.totalProfit || 0) + profit;
+                    } else if (profit < 0) {
+                        performance.losingTrades = (performance.losingTrades || 0) + 1;
+                        performance.totalLoss = (performance.totalLoss || 0) + Math.abs(profit);
+                    }
+                    performance.lastTradeAt = tradeResult.filledAt ? new Date(tradeResult.filledAt) : new Date();
+                } else {
+                    // Open/pending trade - count as open
+                    performance.openTrades = (performance.openTrades || 0) + 1;
+                }
+            }
 
-        console.log(`[updateBotPerformance] Updated bot ${botId}:`, {
-            totalTrades: performance.totalTrades,
-            winRate: `${performance.winRate.toFixed(2)}%`,
-            netProfit: performance.netProfit.toFixed(2)
-        });
+            // Keep only last 100 trades in history
+            if (performance.trades.length > 100) {
+                performance.trades = performance.trades.slice(0, 100);
+            }
 
-        return performance;
+            // Recalculate derived metrics (based on filled trades only)
+            if (performance.totalTrades > 0) {
+                performance.winRate = (performance.winningTrades / performance.totalTrades) * 100;
+            } else {
+                performance.winRate = 0;
+            }
+
+            performance.netProfit = (performance.totalProfit || 0) - (performance.totalLoss || 0);
+
+            // Persist
+            await bot.update({ performance });
+
+            console.log(`[updateBotPerformance] Updated bot ${botId}: totalTrades=${performance.totalTrades}, openTrades=${performance.openTrades}, winRate=${performance.winRate.toFixed(2)}%, netProfit=${(performance.netProfit || 0).toFixed(2)}`);
+
+            return performance;
 
     } catch (error) {
         console.error(`[updateBotPerformance] Error updating bot ${botId}:`, error.message);
@@ -509,6 +540,245 @@ export const updateBotPerformance = async (botId, tradeResult) => {
         return null;
     }
 };
+
+/**
+ * Stop all active bots globally
+ * Cancels all open trades and updates bot statuses
+ */
+export const stopAllBotsController = AsyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) {
+        return AppResponse.error(res, "User ID is required");
+    }
+
+    try {
+        // Get all active bots for this user
+        const activeBotsList = await Bot.findAll({
+            where: {
+                userId,
+                isActive: true
+            }
+        });
+
+        if (activeBotsList.length === 0) {
+            return AppResponse.success(res, "No active bots to stop", {
+                botsStoppedCount: 0,
+                tradesCancelledCount: 0,
+                summary: "No active bots found"
+            });
+        }
+
+        let totalTradesCancelled = 0;
+        const results = [];
+
+        // Process each active bot
+        for (const bot of activeBotsList) {
+            try {
+                // Get all open trades for this bot
+                const openTrades = await Trade.findAll({
+                    where: {
+                        strategyId: bot.id,
+                        status: ['open', 'pending', 'partially_filled']
+                    }
+                });
+
+                // Cancel each trade with the exchange
+                for (const trade of openTrades) {
+                    try {
+                        if (trade.exchangeOrderId) {
+                            // Authenticate with exchange to cancel order
+                            const exchange = await AuthenticateExchange({ userId, exchangeId: bot.exchangeId });
+                            
+                            // Cancel the order on exchange
+                            await exchange.cancelOrder(trade.exchangeOrderId, trade.symbol);
+                            console.log(`[stopAllBots] Cancelled exchange order ${trade.exchangeOrderId} for bot ${bot.id}`);
+                        }
+
+                        // Update trade status to cancelled
+                        await trade.update({
+                            status: 'cancelled',
+                            closedAt: new Date(),
+                            notes: (trade.notes || '') + `\nCancelled via stopAllBots at ${new Date().toISOString()}`
+                        });
+
+                        totalTradesCancelled++;
+                    } catch (tradeError) {
+                        console.error(`[stopAllBots] Error cancelling trade ${trade.id}:`, tradeError.message);
+                        // Continue with other trades even if one fails
+                    }
+                }
+
+                // Stop the TradingEngine if active
+                const engine = activeBots.get(bot.id);
+                if (engine) {
+                    try {
+                        await engine.stop();
+                        activeBots.delete(bot.id);
+                        console.log(`[stopAllBots] Stopped trading engine for bot ${bot.id}`);
+                    } catch (engineError) {
+                        console.error(`[stopAllBots] Error stopping engine for bot ${bot.id}:`, engineError.message);
+                    }
+                }
+
+                // Update bot status
+                await bot.update({
+                    isActive: false,
+                    lastError: 'Bot stopped by user',
+                    stoppedAt: new Date()
+                });
+
+                // Update performance - mark all open trades as cancelled
+                const performance = bot.performance || {};
+                performance.openTrades = Math.max(0, (performance.openTrades || 0) - openTrades.length);
+                await bot.update({ performance });
+
+                results.push({
+                    botId: bot.id,
+                    botName: bot.name,
+                    tradesCancelled: openTrades.length,
+                    status: 'stopped'
+                });
+
+                console.log(`[stopAllBots] Stopped bot ${bot.id} (${bot.name}), cancelled ${openTrades.length} trades`);
+            } catch (botError) {
+                console.error(`[stopAllBots] Error stopping bot ${bot.id}:`, botError.message);
+                results.push({
+                    botId: bot.id,
+                    botName: bot.name,
+                    error: botError.message,
+                    status: 'error'
+                });
+            }
+        }
+
+        return AppResponse.success(res, "All bots stopped successfully", {
+            botsStoppedCount: activeBotsList.length,
+            tradesCancelledCount: totalTradesCancelled,
+            details: results,
+            summary: `Stopped ${activeBotsList.length} bot(s) and cancelled ${totalTradesCancelled} trade(s)`
+        });
+    } catch (error) {
+        console.error('[stopAllBots] Error:', error.message);
+        return AppResponse.error(res, error.message);
+    }
+});
+
+/**
+ * Stop an individual bot
+ * Cancels its open trades and updates bot status
+ */
+export const stopIndividualBotController = AsyncHandler(async (req, res) => {
+    const { botId, userId } = req.params;
+
+    if (!botId || !userId) {
+        return AppResponse.error(res, "Bot ID and User ID are required");
+    }
+
+    try {
+        // Get the bot
+        const bot = await Bot.findByPk(botId);
+
+        if (!bot) {
+            return AppResponse.error(res, "Bot not found", 404);
+        }
+
+        if (bot.userId !== parseInt(userId)) {
+            return AppResponse.error(res, "Unauthorized - bot does not belong to user", 403);
+        }
+
+        if (!bot.isActive) {
+            return AppResponse.success(res, "Bot is already inactive", {
+                botId: bot.id,
+                botName: bot.name,
+                status: 'already_inactive',
+                tradesCancelledCount: 0
+            });
+        }
+
+        // Get all open trades for this bot
+        const openTrades = await Trade.findAll({
+            where: {
+                strategyId: botId,
+                status: ['open', 'pending', 'partially_filled']
+            }
+        });
+
+        let tradesCancelled = 0;
+        const cancelledTrades = [];
+
+        // Cancel each open trade with the exchange
+        for (const trade of openTrades) {
+            try {
+                if (trade.exchangeOrderId) {
+                    // Authenticate with exchange to cancel order
+                    const exchange = await AuthenticateExchange({ userId, exchangeId: bot.exchangeId });
+                    
+                    // Cancel the order on exchange
+                    await exchange.cancelOrder(trade.exchangeOrderId, trade.symbol);
+                    console.log(`[stopIndividualBot] Cancelled exchange order ${trade.exchangeOrderId} for bot ${botId}`);
+                }
+
+                // Update trade status to cancelled
+                await trade.update({
+                    status: 'cancelled',
+                    closedAt: new Date(),
+                    notes: (trade.notes || '') + `\nCancelled via stopIndividualBot at ${new Date().toISOString()}`
+                });
+
+                tradesCancelled++;
+                cancelledTrades.push({
+                    tradeId: trade.id,
+                    exchangeOrderId: trade.exchangeOrderId,
+                    symbol: trade.symbol,
+                    side: trade.side,
+                    quantity: trade.quantity
+                });
+            } catch (tradeError) {
+                console.error(`[stopIndividualBot] Error cancelling trade ${trade.id}:`, tradeError.message);
+                // Continue with other trades even if one fails
+            }
+        }
+
+        // Stop the TradingEngine if active
+        const engine = activeBots.get(botId);
+        if (engine) {
+            try {
+                await engine.stop();
+                activeBots.delete(botId);
+                console.log(`[stopIndividualBot] Stopped trading engine for bot ${botId}`);
+            } catch (engineError) {
+                console.error(`[stopIndividualBot] Error stopping engine for bot ${botId}:`, engineError.message);
+            }
+        }
+
+        // Update bot status
+        await bot.update({
+            isActive: false,
+            lastError: 'Bot stopped by user',
+            stoppedAt: new Date()
+        });
+
+        // Update performance - mark open trades as cancelled
+        const performance = bot.performance || {};
+        performance.openTrades = Math.max(0, (performance.openTrades || 0) - openTrades.length);
+        await bot.update({ performance });
+
+        console.log(`[stopIndividualBot] Stopped bot ${botId}, cancelled ${tradesCancelled} trades`);
+
+        return AppResponse.success(res, "Bot stopped successfully", {
+            botId: bot.id,
+            botName: bot.name,
+            status: 'stopped',
+            tradesCancelledCount: tradesCancelled,
+            cancelledTrades,
+            summary: `Stopped bot "${bot.name}" and cancelled ${tradesCancelled} open trade(s)`
+        });
+    } catch (error) {
+        console.error(`[stopIndividualBot] Error:`, error.message);
+        return AppResponse.error(res, error.message);
+    }
+});
 
 // Cleanup on server shutdown
 export const shutdownAllBots = async () => {

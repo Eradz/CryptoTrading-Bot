@@ -146,6 +146,7 @@ export const Bot = sequelize.define("Bot", {
         allowNull: false,
         defaultValue: {
             totalTrades: 0,
+            openTrades: 0,
             winningTrades: 0,
             losingTrades: 0,
             winRate: 0,

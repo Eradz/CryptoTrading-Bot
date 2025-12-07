@@ -1,4 +1,5 @@
 import { trade } from './trade.js';
+import { updateBotPerformance } from '../../controllers/bot/BotController.js';
 import Trade from '../../models/Trade.js';
 import { retryWithBackoff, exchangeCircuitBreakers } from '../resilience/retryHandler.js';
 import { 
@@ -259,6 +260,27 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                 filledAt: mainOrder.timestamp ? new Date(mainOrder.timestamp) : null,
                 exchangeResponse: mainOrder
             });
+
+            // Update bot performance immediately (preliminary)
+            try {
+                await updateBotPerformance(strategyId, {
+                    id: tradeRecord.id,
+                    exchangeOrderId: tradeRecord.exchangeOrderId,
+                    userId: tradeRecord.userId,
+                    strategyId: tradeRecord.strategyId,
+                    symbol: tradeRecord.symbol,
+                    side: tradeRecord.side,
+                    status: tradeRecord.status,
+                    quantity: tradeRecord.quantity,
+                    price: tradeRecord.price,
+                    avgExecutedPrice: tradeRecord.avgExecutedPrice,
+                    stopLoss: tradeRecord.stopLoss,
+                    takeProfit: tradeRecord.takeProfit,
+                    timestamp: tradeRecord.createdAt
+                });
+            } catch (err) {
+                console.warn('Failed to update bot performance after trade creation:', err?.message || err);
+            }
         }
 
         return {

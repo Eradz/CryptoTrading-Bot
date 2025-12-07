@@ -1,5 +1,6 @@
 import Trade from '../../models/Trade.js';
 import { retryWithBackoff } from '../resilience/retryHandler.js';
+import { updateBotPerformance } from '../../controllers/bot/BotController.js';
 
 /**
  * Reconcile trades with exchange to detect fills, partial fills, and cancellations
@@ -64,6 +65,32 @@ export const reconcileTrades = async (exchangeClient, userId) => {
                     });
 
                     console.log(`[Reconciliation] Updated order ${trade.exchangeOrderId}: ${oldStatus} -> ${newStatus}, filled: ${executedQty}/${trade.quantity}`);
+                    // If trade just moved to filled, calculate P&L and update bot performance
+                    if (newStatus === 'filled') {
+                        try {
+                            const profitResult = await updateTradeProfit(trade.id);
+                            // Build a tradeResult object to pass to updateBotPerformance
+                            const perfTrade = {
+                                id: trade.id,
+                                exchangeOrderId: trade.exchangeOrderId,
+                                userId: trade.userId,
+                                strategyId: trade.strategyId,
+                                symbol: trade.symbol,
+                                side: trade.side,
+                                status: 'filled',
+                                quantity: trade.executedQty,
+                                price: trade.price,
+                                avgExecutedPrice: trade.avgExecutedPrice,
+                                profitLoss: profitResult ? profitResult.profitLoss : trade.profitLoss,
+                                profitLossPercent: profitResult ? profitResult.profitLossPercent : trade.profitLossPercent,
+                                filledAt: new Date()
+                            };
+
+                            await updateBotPerformance(trade.strategyId, perfTrade);
+                        } catch (err) {
+                            console.error(`[Reconciliation] Error updating performance for trade ${trade.exchangeOrderId}:`, err?.message || err);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error(`[Reconciliation] Error updating trade ${trade.exchangeOrderId}:`, error.message);
