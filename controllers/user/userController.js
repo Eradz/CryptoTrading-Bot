@@ -13,7 +13,7 @@ export const getAllUsersController = AsyncHandler(async(req, res) =>{
 })
 
 export const getUserByIdController = AsyncHandler(async(req, res) =>{
-    const {id} = req.params
+    const {id} = req.cookies
     const user = await User.findByPk(id)
     if(!user){
         return AppResponse.error(res, "User not found")

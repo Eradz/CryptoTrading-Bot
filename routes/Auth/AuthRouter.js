@@ -2,6 +2,7 @@ import express from "express"
 import dotenv from "dotenv"
 import { loginController } from "../../controllers/auth/loginUser.js"
 import { signupController } from "../../controllers/auth/signUpUser.js"
+import { sessionController } from "../../controllers/auth/session.js"
 import { upload } from "../../utils/multer.js"
 import { validate, signupValidation, loginValidation } from "../../utils/validation.js"
 dotenv.config()
@@ -112,5 +113,37 @@ route.post('/signup', [upload.none()], validate(signupValidation), signupControl
  *                   example: "Invalid email or password"
  */
 route.post('/login', [upload.none()], validate(loginValidation), loginController)
+
+/**
+ * @swagger
+ * /api/v1/auth/session/:
+ *   get:
+ *     summary: Validate session and return user info
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Session valid - returns user info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       401:
+ *         description: Unauthorized or invalid session
+ */
+route.get('/session', sessionController)
 
 export default route;

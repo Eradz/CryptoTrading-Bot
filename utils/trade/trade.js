@@ -10,7 +10,7 @@ import { logger } from "../monitoring/monitoring.js";
  * @param {number} price - Price for limit orders
  * @returns {Object} Order result
  */
-export const trade = async (symbol, side, amount, exchange, type = "market", price = null) => {
+export const trade = async (symbol, side, amount, exchange, type = "market", price = null, extraParams = {}) => {
     try {
         // Validate inputs
         if (!symbol || !side || !amount || !exchange) {
@@ -69,13 +69,15 @@ export const trade = async (symbol, side, amount, exchange, type = "market", pri
             orderParams.price = exchange.priceToPrecision(symbol, price);
         }
 
-        // Execute order
+        // Execute order. Pass extraParams through to ccxt createOrder (many exchanges accept an additional params object)
+        // Example extraParams: { stopLossPrice: 123, takeProfitPrice: 130, reduceOnly: true }
         const order = await exchange.createOrder(
             orderParams.symbol,
             orderParams.type,
             orderParams.side,
             orderParams.amount,
-            orderParams.price
+            orderParams.price,
+            extraParams
         );
 
         // Log successful trade
@@ -99,7 +101,8 @@ export const trade = async (symbol, side, amount, exchange, type = "market", pri
             side,
             amount,
             type,
-            price
+            price,
+            extraParams
         });
         throw error;
     }

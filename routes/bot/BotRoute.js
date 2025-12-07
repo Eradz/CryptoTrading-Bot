@@ -1,6 +1,8 @@
 import express from "express";
 import {
     createBotController,
+    createBotFromTemplateController,
+    getBotTemplatesController,
     getUserBotsController,
     getBotByIdController,
     updateBotController,
@@ -14,10 +16,137 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/v1/bots/templates:
+ *   get:
+ *     summary: Get all available bot templates
+ *     tags: [Bots]
+ *     description: Returns list of pre-configured bot templates with descriptions and risk profiles
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Templates retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "RSI_SMA_MACD"
+ *                       name:
+ *                         type: string
+ *                         example: "RSI + SMA + MACD Strategy"
+ *                       description:
+ *                         type: string
+ *                       strategy:
+ *                         type: string
+ *                       interval:
+ *                         type: string
+ *                       estimatedWinRate:
+ *                         type: string
+ *                         example: "55-65%"
+ *                       riskProfile:
+ *                         type: string
+ *                         enum: [Conservative, Moderate, Aggressive]
+ */
+router.get('/templates', getBotTemplatesController);
+
+/**
+ * @swagger
+ * /api/v1/bots/quick-create/{userId}/{exchangeId}:
+ *   post:
+ *     summary: Create bot with one-click template selection
+ *     tags: [Bots]
+ *     description: Simplified bot creation - select type and symbol, rest is auto-configured with optimal defaults
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *       - in: path
+ *         name: exchangeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Exchange ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - botType
+ *               - symbol
+ *             properties:
+ *               botType:
+ *                 type: string
+ *                 enum: [RSI_SMA_MACD, BOLLINGER_BANDS, HYBRID]
+ *                 example: "HYBRID"
+ *                 description: "Pre-configured strategy template"
+ *               symbol:
+ *                 type: string
+ *                 example: "BTC/USDT"
+ *                 description: "Trading pair in format ASSET/QUOTE"
+ *               name:
+ *                 type: string
+ *                 example: "My BTC Bot"
+ *                 description: "Optional custom name (default: Template Name - Symbol)"
+ *     responses:
+ *       201:
+ *         description: Bot created successfully with template configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bot:
+ *                       $ref: '#/components/schemas/Bot'
+ *                     template:
+ *                       type: object
+ *                       properties:
+ *                         description:
+ *                           type: string
+ *                         estimatedWinRate:
+ *                           type: string
+ *                     status:
+ *                       type: string
+ *                       example: "Bot created and ready to activate"
+ *       400:
+ *         description: Invalid request - missing required fields or invalid bot type
+ *       500:
+ *         description: Server error
+ */
+router.post('/quick-create/:userId/:exchangeId', createBotFromTemplateController);
+
+/**
+ * @swagger
  * /api/v1/bots/{userId}/{exchangeId}:
  *   post:
- *     summary: Create a new trading bot
+ *     summary: Create a new trading bot with full configuration
  *     tags: [Bots]
+ *     description: Advanced bot creation - specify all parameters including strategy configuration
  *     security:
  *       - cookieAuth: []
  *     parameters:

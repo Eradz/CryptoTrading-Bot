@@ -5,6 +5,8 @@ import {
     calculateStopLoss, 
     calculateTakeProfit 
 } from "../risk-management/position-manager.js";
+import { updateBotPerformance } from "../../controllers/bot/BotController.js";
+import { executeTradeWithRisk } from "./trade-manager.js";
 
 class TradingEngine {
     constructor(exchange, bot, config = {}) {
@@ -363,40 +365,77 @@ class TradingEngine {
                 risk.riskRewardRatio
             );
 
-            // Execute main order
-            const order = await this.exchange.createOrder(
-                this.bot.symbol,
-                'market',
-                signal.action,
-                positionSize,
-                currentPrice,
+            // Execute trade via trade manager so it gets persisted and reconciled
+            const tradeResult = await executeTradeWithRisk(
+                this.exchange,
                 {
-                    takeProfitPrice: signal.action === 'buy' ? takeProfit : stopLoss,
-                    stopLossPrice: signal.action === 'buy' ? stopLoss : takeProfit
-                }
+                    symbol: this.bot.symbol,
+                    side: signal.action,
+                    type: 'market',
+                    price: currentPrice
+                },
+                {
+                    accountBalance,
+                    riskPercentage: risk.riskPercentage,
+                    riskRewardRatio: risk.riskRewardRatio,
+                    maxPositionSize: risk.maxPositionSize,
+                    maxRiskPerTrade: risk.maxRiskPerTrade
+                },
+                { userId: this.bot.userId, strategyId: this.bot.id }
             );
+
+            const order = tradeResult.mainOrder || null;
+            const tradeRecord = tradeResult.tradeRecord || null;
+            const executedPositionSize = tradeResult.positionSize || positionSize;
 
             logger.logTrade({
                 type: 'TRADE_EXECUTED',
                 botId: this.bot.id,
                 order,
+                tradeRecord,
                 signal,
                 stopLoss,
                 takeProfit,
-                positionSize
+                positionSize: executedPositionSize
             });
 
             alerts.tradeAlert({
                 botId: this.bot.id,
                 symbol: this.bot.symbol,
                 side: signal.action,
-                size: positionSize,
+                size: executedPositionSize,
                 price: currentPrice
             });
+
+            // Update bot performance (immediate preliminary update)
+            try {
+                const perfUpdate = await updateBotPerformance(this.bot.id, tradeRecord || {
+                    symbol: this.bot.symbol,
+                    side: signal.action,
+                    quantity: executedPositionSize,
+                    entryPrice: currentPrice,
+                    stopLoss,
+                    takeProfit,
+                    confidence: signal.confidence,
+                    strategy: this.bot.strategy,
+                    timestamp: new Date()
+                });
+
+                if (perfUpdate) {
+                    logger.logTrade({ type: 'PERFORMANCE_UPDATED_IMMEDIATE', botId: this.bot.id, perf: {
+                        totalTrades: perfUpdate.totalTrades,
+                        winRate: perfUpdate.winRate,
+                        netProfit: perfUpdate.netProfit
+                    }});
+                }
+            } catch (err) {
+                console.warn('Error updating bot performance:', err?.message || err);
+            }
 
             return {
                 success: true,
                 order,
+                tradeRecord,
                 stopLoss,
                 takeProfit
             };
