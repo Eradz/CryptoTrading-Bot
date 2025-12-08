@@ -143,7 +143,8 @@ export const createExchangeCircuitBreakers = () => {
         binance: new CircuitBreaker({ name: 'binance', failureThreshold: 5 }),
         binanceus: new CircuitBreaker({ name: 'binanceus', failureThreshold: 5 }),
         kraken: new CircuitBreaker({ name: 'kraken', failureThreshold: 5 }),
-        coinbase: new CircuitBreaker({ name: 'coinbase', failureThreshold: 5 })
+        coinbase: new CircuitBreaker({ name: 'coinbase', failureThreshold: 5 }),
+        bybit: new CircuitBreaker({ name: 'bybit', failureThreshold: 5 })
     };
 };
 
