@@ -7,6 +7,7 @@ import {
 } from "../risk-management/position-manager.js";
 import { updateBotPerformance } from "../../controllers/bot/BotController.js";
 import { executeTradeWithRisk } from "./trade-manager.js";
+import Trade from "../../models/Trade.js";
 
 class TradingEngine {
     constructor(exchange, bot, config = {}) {
@@ -40,7 +41,7 @@ class TradingEngine {
                 symbol: this.bot.symbol
             });
 
-            await this.executeTradingCycle();
+            const tradingResponse = await this.executeTradingCycle();
             
             // Set up recurring execution
             const intervalMs = this.getIntervalMs(this.bot.interval);
@@ -53,7 +54,7 @@ class TradingEngine {
                 });
             }, intervalMs);
 
-            return { success: true, message: "Bot started successfully" };
+            return { success: true, message: "Bot started successfully", signal: tradingResponse };
         } catch (error) {
             this.isRunning = false;
             logger.logError(error, { context: 'TradingEngine.start', botId: this.bot.id });
@@ -116,6 +117,11 @@ class TradingEngine {
                 this.lastTradeTime = now;
             }
 
+            await Trade.create({
+                botId: this.bot.id,
+                side: signal.action,
+                exchangeOrderId: 'Hold',
+            });
             return signal;
         } catch (error) {
             logger.logError(error, { 
@@ -381,12 +387,12 @@ class TradingEngine {
                     maxPositionSize: risk.maxPositionSize,
                     maxRiskPerTrade: risk.maxRiskPerTrade
                 },
-                { userId: this.bot.userId, strategyId: this.bot.id }
+                { userId: this.bot.userId, botId: this.bot.id, bot: this.bot }
             );
 
             const order = tradeResult.mainOrder || null;
             const tradeRecord = tradeResult.tradeRecord || null;
-            const executedPositionSize = tradeResult.positionSize || positionSize;
+            const executedPositionSize = tradeResult.tradeRecord.quantity || positionSize;
 
             logger.logTrade({
                 type: 'TRADE_EXECUTED',
@@ -408,29 +414,29 @@ class TradingEngine {
             });
 
             // Update bot performance (immediate preliminary update)
-            try {
-                const perfUpdate = await updateBotPerformance(this.bot.id, tradeRecord || {
-                    symbol: this.bot.symbol,
-                    side: signal.action,
-                    quantity: executedPositionSize,
-                    entryPrice: currentPrice,
-                    stopLoss,
-                    takeProfit,
-                    confidence: signal.confidence,
-                    strategy: this.bot.strategy,
-                    timestamp: new Date()
-                });
+            // try {
+            //     const perfUpdate = await updateBotPerformance(this.bot.id, tradeRecord || {
+            //         symbol: this.bot.symbol,
+            //         side: signal.action,
+            //         quantity: executedPositionSize,
+            //         entryPrice: currentPrice,
+            //         stopLoss,
+            //         takeProfit,
+            //         confidence: signal.confidence,
+            //         strategy: this.bot.strategy,
+            //         timestamp: new Date()
+            //     });
 
-                if (perfUpdate) {
-                    logger.logTrade({ type: 'PERFORMANCE_UPDATED_IMMEDIATE', botId: this.bot.id, perf: {
-                        totalTrades: perfUpdate.totalTrades,
-                        winRate: perfUpdate.winRate,
-                        netProfit: perfUpdate.netProfit
-                    }});
-                }
-            } catch (err) {
-                console.warn('Error updating bot performance:', err?.message || err);
-            }
+            //     if (perfUpdate) {
+            //         logger.logTrade({ type: 'PERFORMANCE_UPDATED_IMMEDIATE', botId: this.bot.id, perf: {
+            //             totalTrades: perfUpdate.totalTrades,
+            //             winRate: perfUpdate.winRate,
+            //             netProfit: perfUpdate.netProfit
+            //         }});
+            //     }
+            // } catch (err) {
+            //     console.warn('Error updating bot performance:', err?.message || err);
+            // }
 
             return {
                 success: true,

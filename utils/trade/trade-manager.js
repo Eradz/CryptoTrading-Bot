@@ -8,13 +8,14 @@ import {
     calculateTakeProfit, 
     validateTradeRisk 
 } from '../risk-management/position-manager.js';
+import { Bot } from '../../models/Bot.js';
 
 /**
  * Execute trade with risk management and order tracking
  * @param {Object} exchangeClient - Authenticated exchange client
  * @param {Object} tradeParams - Trade parameters
  * @param {Object} riskParams - Risk management parameters
- * @param {Object} userContext - User context with userId, strategyId
+ * @param {Object} userContext - User context with userId, botId
  * @returns {Object} Trade result with order ID
  */
 export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskParams, userContext = {}) => {
@@ -34,7 +35,7 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
             maxRiskPerTrade
         } = riskParams;
 
-        const { userId, strategyId } = userContext;
+        const { userId, botId, bot } = userContext;
 
         // Calculate stop loss
         const stopLoss = calculateStopLoss(side, price, riskPercentage);
@@ -202,8 +203,21 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                         }
                     );
                 });
+                await Trade.create({
+                    exchangeOrderId: mainOrder.id,
+                    botId: bot.id,
+                    side,
+                    status: "open",
+                    price,
+                    quantity: positionSize,
+                    stopLoss,
+                    takeProfit,
+                    closedAt: 0,
+                    });
+
+
+                console.log("bot", bot.performance);
             } else {
-                console.log(extraParams, price)
                 mainOrder = await trade(
                     symbol,
                     side,
@@ -220,17 +234,14 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                 await Trade.create({
                     exchangeOrderId: 'FAILED_' + Date.now(),
                     userId,
-                    strategyId,
+                    botId,
                     symbol,
                     side,
                     status: 'failed',
                     quantity: positionSize,
                     price,
                     stopLoss,
-                    takeProfit,
-                    riskPercentage,
-                    riskRewardRatio,
-                    notes: error.message
+                    takeProfit
                 });
             }
             throw error;
@@ -239,57 +250,23 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
         // Save order to database
         let tradeRecord = null;
         if (userId && mainOrder.id) {
-            tradeRecord = await Trade.create({
-                exchangeOrderId: mainOrder.id,
-                userId,
-                strategyId,
-                symbol,
-                side,
-                status: mainOrder.status || 'open',
-                quantity: positionSize,
-                executedQty: mainOrder.filled || 0,
-                price,
-                avgExecutedPrice: mainOrder.average,
-                cost: mainOrder.cost,
-                fee: mainOrder.fee?.cost || 0,
-                feeCurrency: mainOrder.fee?.currency || 'USDT',
-                stopLoss,
-                takeProfit,
-                riskPercentage,
-                riskRewardRatio,
-                filledAt: mainOrder.timestamp ? new Date(mainOrder.timestamp) : null,
-                exchangeResponse: mainOrder
-            });
-
             // Update bot performance immediately (preliminary)
-            try {
-                await updateBotPerformance(strategyId, {
-                    id: tradeRecord.id,
-                    exchangeOrderId: tradeRecord.exchangeOrderId,
-                    userId: tradeRecord.userId,
-                    strategyId: tradeRecord.strategyId,
-                    symbol: tradeRecord.symbol,
-                    side: tradeRecord.side,
-                    status: tradeRecord.status,
-                    quantity: tradeRecord.quantity,
-                    price: tradeRecord.price,
-                    avgExecutedPrice: tradeRecord.avgExecutedPrice,
-                    stopLoss: tradeRecord.stopLoss,
-                    takeProfit: tradeRecord.takeProfit,
-                    timestamp: tradeRecord.createdAt
-                });
-            } catch (err) {
-                console.warn('Failed to update bot performance after trade creation:', err?.message || err);
-            }
+            tradeRecord = await Trade.create({
+                    exchangeOrderId: mainOrder.id,
+                    botId: bot.id,
+                    side,
+                    status: "open",
+                    price,
+                    quantity: positionSize,
+                    stopLoss,
+                    takeProfit,
+                    closedAt: 0,
+                    });
         }
 
         return {
             mainOrder,
             tradeRecord,
-            positionSize,
-            entryPrice: price,
-            stopLoss,
-            takeProfit,
             status: 'success'
         };
 

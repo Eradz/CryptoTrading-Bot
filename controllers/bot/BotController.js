@@ -313,15 +313,15 @@ export const startBotController = AsyncHandler(async (req, res) => {
         const tradingEngine = new TradingEngine(exchange, bot);
         
         // Start the bot
-        await tradingEngine.start();
-
+        const tradingResponse = await tradingEngine.start();
+        console.log("Trading Engine", tradingResponse.signal)
         // Store instance
         activeBots.set(botId, tradingEngine);
 
         // Update bot status
         await bot.update({ isActive: true, lastError: null });
 
-        return AppResponse.success(res, "Bot started successfully", bot);
+        return AppResponse.success(res, "Bot started successfully", { bot, signal: tradingResponse.signal });
     } catch (error) {
         await Bot.update(
             { lastError: error.message, errorCount: bot.errorCount + 1 },
