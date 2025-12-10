@@ -5,6 +5,8 @@ import { createStrategyManager } from "../../utils/strategies/strategy-manager.j
 import { executeTradeWithRisk } from "../../utils/trade/trade-manager.js";
 import { Exchange } from "../../models/exchangeDetails.js";
 import ccxt from "ccxt";
+import { Bot } from "../../models/Bot.js";
+import Trade from "../../models/Trade.js";
 
 const strategyManager = createStrategyManager({});
 
@@ -117,22 +119,14 @@ export const createTradeOrder = AsyncHandler(async (req, res) => {
 });
 
 export const getTradeHistory = AsyncHandler(async (req, res) => {
-    const { userId, exchangeId } = req.params;
-    const {symbol} = req.body
-
+    const { botId } = req.params;
     try {
-        // Get exchange details
-        const exchange = await Exchange.findOne({ exchangeId });
-        if (!exchange) {
-            return AppResponse.error(res, `Exchange ${exchangeId} not found`, 404);
+        // Get bot details
+        const trade = await Trade.findOne({ where: { botId } });
+        if (!trade) {
+            return AppResponse.error(res, `Trade history for bot not found`, 404);
         }
-
-        const userExchange = await AuthenticateExchange({ userId, exchangeId });
-        if (!userExchange) {
-            return AppResponse.error(res, `User exchange ${exchangeId} not found`, 404);
-        }
-        const orders = await userExchange.fetchOrders(symbol);
-        return AppResponse.success(res, 'Trade history retrieved successfully', { orders });
+        return AppResponse.success(res, 'Trade history retrieved successfully', trade) 
     } catch (e) {
         console.error('Error retrieving trade history:', e);
         return AppResponse.error(res, e.message || 'Failed to retrieve trade history');

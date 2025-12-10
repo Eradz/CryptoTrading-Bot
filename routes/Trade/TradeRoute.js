@@ -229,7 +229,7 @@ router.post("/:id/:exchangeId", validate(tradeValidation), createTradeOrder);
 
 /**
  * @swagger
- * /api/v1/trade/{userId}/{exchangeId}:
+ * /api/v1/trade/{botId}:
  *   get:
  *     summary: Get trade history
  *     description: |
@@ -241,34 +241,12 @@ router.post("/:id/:exchangeId", validate(tradeValidation), createTradeOrder);
  *     tags:
  *       - Trading
  *     parameters:
- *       - name: userId
+ *       - name: botId
  *         in: path
  *         required: true
  *         schema:
  *           type: string
- *         description: User ID
- *       - name: exchangeId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *         description: Exchange ID
- *       - name: symbol
- *         in: query
- *         schema:
- *           type: string
- *           example: "BTC/USDT"
- *         description: Optional filter by trading pair
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               symbol:
- *                 type: string
- *                 example: "BTC/USDT"
- *                 description: Filter by trading pair
+ *         description: Bot ID
  *     responses:
  *       200:
  *         description: Trade history retrieved successfully
@@ -340,6 +318,6 @@ router.post("/:id/:exchangeId", validate(tradeValidation), createTradeOrder);
  *       500:
  *         description: Failed to retrieve trade history
  */
-router.get("/:userId/:exchangeId", getTradeHistory);
+router.get("/:botId", getTradeHistory);
 
 export default router;

@@ -31,6 +31,7 @@ const port = process.env.PORT || 5000;
 
 // Initialize Sentry
 dotenv.config();
+connectDB()
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -46,7 +47,6 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   credentials: true
 };
-connectDB()
 app.use(cookieParser()); 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -128,5 +128,5 @@ app.listen(port, () => {
   // startStrategyPollingWorker();
   
   // Start bot performance sync worker (updates performance metrics every 30 seconds)
-  startBotPerformanceSyncWorker(30);
+  // startBotPerformanceSyncWorker(30);
 });

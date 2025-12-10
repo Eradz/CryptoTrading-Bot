@@ -39,8 +39,8 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
 
         // Calculate stop loss
         const stopLoss = calculateStopLoss(side, price, riskPercentage);
-
         console.log("stopLoss:", stopLoss);
+
         // Calculate position size
         const positionSize = calculatePositionSize(
             accountBalance,
@@ -49,6 +49,7 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
             stopLoss
         );
         console.log("Position Size:", positionSize);
+
         // Calculate take profit
         const takeProfit = calculateTakeProfit(
             side,
@@ -57,6 +58,7 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
             riskRewardRatio
         );
         console.log("Take Profit:", takeProfit);
+
         // Validate trade risk
         const isValidTrade = validateTradeRisk(
             {
@@ -81,103 +83,35 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
         const circuitBreaker = exchangeCircuitBreakers[exchangeName];
         console.log("Circuit Breaker:", circuitBreaker);
         console.log("Exchange:", exchangeName);
-        // Fetch current best bid/ask for validation
-        let extraParams = {};
+
+        // Fetch current ticker for validation
         const ticker = await exchangeClient.fetchTicker(symbol);
-        const bestAsk = ticker.ask;
-        const bestBid = ticker.bid;
-        const minDistancePercent = 0.01; // 1%
-        const minStopDistance = price * minDistancePercent;
-        console.log(`[TRADE PARAMS] Entry: ${price}, StopLoss: ${stopLoss}, TakeProfit: ${takeProfit}, Side: ${side}, BestAsk: ${bestAsk}, BestBid: ${bestBid}`);
+        const currentPrice = ticker.last || ticker.close;
+        console.log(`[TRADE PARAMS] Entry: ${price}, StopLoss: ${stopLoss}, TakeProfit: ${takeProfit}, Side: ${side}, Current: ${currentPrice}`);
 
-        // STOP_LOSS_LIMIT and TAKE_PROFIT_LIMIT validation
-        if (type === 'STOP_LOSS_LIMIT' || type === 'TAKE_PROFIT_LIMIT') {
-            if (side === 'sell') {
-                // stopPrice must be below best bid
-                if (stopLoss < bestBid) {
-                    extraParams.stopLossPrice = stopLoss;
-                } else {
-                    const adjustedStop = bestBid - minStopDistance;
-                    extraParams.stopLossPrice = adjustedStop;
-                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (must be < bestBid)`);
-                }
-            } else if (side === 'buy') {
-                // stopPrice must be above best ask
-                if (stopLoss > bestAsk) {
-                    extraParams.stopLossPrice = stopLoss;
-                } else {
-                    const adjustedStop = bestAsk + minStopDistance;
-                    extraParams.stopLossPrice = adjustedStop;
-                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (must be > bestAsk)`);
-                }
+        // Validate stop-loss and take-profit prices
+        if (side === 'buy') {
+            // LONG position validation
+            if (stopLoss >= currentPrice) {
+                throw new Error(`Invalid LONG: Stop-loss (${stopLoss}) must be below current price (${currentPrice})`);
             }
-            // Take profit logic (similar, but usually not immediately triggerable)
-            extraParams.takeProfitPrice = takeProfit;
-        }
-
-        // LIMIT_MAKER validation
-        if (type === 'LIMIT_MAKER') {
-            if (side === 'buy') {
-                // price must be below best ask
-                if (price < bestAsk) {
-                    // valid
-                } else {
-                    const adjustedPrice = bestAsk - minStopDistance;
-                    console.warn(`[TRADE WARNING] Adjusted LIMIT_MAKER price from ${price} to ${adjustedPrice} (must be < bestAsk)`);
-                    tradeParams.price = adjustedPrice;
-                }
-            } else if (side === 'sell') {
-                // price must be above best bid
-                if (price > bestBid) {
-                    // valid
-                } else {
-                    const adjustedPrice = bestBid + minStopDistance;
-                    console.warn(`[TRADE WARNING] Adjusted LIMIT_MAKER price from ${price} to ${adjustedPrice} (must be > bestBid)`);
-                    tradeParams.price = adjustedPrice;
-                }
+            if (takeProfit <= currentPrice) {
+                throw new Error(`Invalid LONG: Take-profit (${takeProfit}) must be above current price (${currentPrice})`);
+            }
+        } else if (side === 'sell') {
+            // SHORT position validation
+            if (stopLoss <= currentPrice) {
+                throw new Error(`Invalid SHORT: Stop-loss (${stopLoss}) must be above current price (${currentPrice})`);
+            }
+            if (takeProfit >= currentPrice) {
+                throw new Error(`Invalid SHORT: Take-profit (${takeProfit}) must be below current price (${currentPrice})`);
             }
         }
 
-        // For other types, keep previous min distance logic
-        if (type !== 'STOP_LOSS_LIMIT' && type !== 'TAKE_PROFIT_LIMIT' && type !== 'LIMIT_MAKER') {
-            if (side === 'buy') {
-                if (stopLoss < price - minStopDistance) {
-                    extraParams.stopLossPrice = stopLoss;
-                } else {
-                    const adjustedStop = price - minStopDistance;
-                    extraParams.stopLossPrice = adjustedStop;
-                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (min distance)`);
-                }
-                if (takeProfit > price + minStopDistance) {
-                    extraParams.takeProfitPrice = takeProfit;
-                } else {
-                    const adjustedTake = price + minStopDistance;
-                    extraParams.takeProfitPrice = adjustedTake;
-                    console.warn(`[TRADE WARNING] Adjusted takeProfitPrice from ${takeProfit} to ${adjustedTake} (min distance)`);
-                }
-            } else if (side === 'sell') {
-                if (stopLoss > price + minStopDistance) {
-                    extraParams.stopLossPrice = stopLoss;
-                } else {
-                    const adjustedStop = price + minStopDistance;
-                    extraParams.stopLossPrice = adjustedStop;
-                    console.warn(`[TRADE WARNING] Adjusted stopLossPrice from ${stopLoss} to ${adjustedStop} (min distance)`);
-                }
-                if (takeProfit < price - minStopDistance) {
-                    extraParams.takeProfitPrice = takeProfit;
-                } else {
-                    const adjustedTake = price - minStopDistance;
-                    extraParams.takeProfitPrice = adjustedTake;
-                    console.warn(`[TRADE WARNING] Adjusted takeProfitPrice from ${takeProfit} to ${adjustedTake} (min distance)`);
-                }
-            }
-        }
-
-        // Execute main trade with retry logic and circuit breaker
+        // Execute main entry trade with retry logic and circuit breaker
         let mainOrder;
         try {
             if (circuitBreaker) {
-                console.log(extraParams, price)
                 mainOrder = await circuitBreaker.execute(async () => {
                     return await retryWithBackoff(
                         () => trade(
@@ -187,7 +121,7 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                             exchangeClient,
                             type,
                             price,
-                            extraParams
+                            {} // No extra params for entry order
                         ),
                         {
                             maxRetries: 3,
@@ -203,20 +137,6 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                         }
                     );
                 });
-                await Trade.create({
-                    exchangeOrderId: mainOrder.id,
-                    botId: bot.id,
-                    side,
-                    status: "open",
-                    price,
-                    quantity: positionSize,
-                    stopLoss,
-                    takeProfit,
-                    closedAt: 0,
-                    });
-
-
-                console.log("bot", bot.performance);
             } else {
                 mainOrder = await trade(
                     symbol,
@@ -225,50 +145,141 @@ export const executeTradeWithRisk = async (exchangeClient, tradeParams, riskPara
                     exchangeClient,
                     type,
                     price,
-                    extraParams
+                    {}
                 );
             }
+
+            console.log('✅ Entry order filled:', mainOrder.id);
+
+            // Get actual fill price (important for calculating accurate SL/TP)
+            const actualEntryPrice = mainOrder.average || mainOrder.price || price;
+            console.log(`Actual entry price: ${actualEntryPrice}`);
+
+            // Recalculate SL/TP based on actual entry price if significantly different
+            let finalStopLoss = stopLoss;
+            let finalTakeProfit = takeProfit;
+
+            const priceDiffPercent = Math.abs((actualEntryPrice - price) / price * 100);
+            if (priceDiffPercent > 0.5) { // If entry differs by more than 0.5%
+                console.log(`⚠️ Entry price differs by ${priceDiffPercent.toFixed(2)}%, recalculating SL/TP`);
+                finalStopLoss = calculateStopLoss(side, actualEntryPrice, riskPercentage);
+                finalTakeProfit = calculateTakeProfit(side, actualEntryPrice, finalStopLoss, riskRewardRatio);
+                console.log(`Adjusted - StopLoss: ${finalStopLoss}, TakeProfit: ${finalTakeProfit}`);
+            }
+
+            // Determine closing side (opposite of entry)
+            const closingSide = side === 'buy' ? 'sell' : 'buy';
+
+            // Place stop-loss and take-profit orders simultaneously
+            let stopLossOrder = null;
+            let takeProfitOrder = null;
+
+            try {
+                [stopLossOrder, takeProfitOrder] = await Promise.all([
+                    // Stop-loss order
+                    exchangeClient.createOrder(
+                        symbol,
+                        'stop_market',
+                        closingSide,
+                        positionSize,
+                        null,
+                        {
+                            stopPrice: finalStopLoss,
+                            reduceOnly: true // Only closes position, doesn't open new one
+                        }
+                    ),
+                    // Take-profit order
+                    exchangeClient.createOrder(
+                        symbol,
+                        'take_profit_market',
+                        closingSide,
+                        positionSize,
+                        null,
+                        {
+                            stopPrice: finalTakeProfit,
+                            reduceOnly: true
+                        }
+                    )
+                ]);
+
+                console.log('✅ Stop-loss placed:', stopLossOrder.id);
+                console.log('✅ Take-profit placed:', takeProfitOrder.id);
+
+            } catch (slTpError) {
+                console.error('❌ Failed to place SL/TP:', slTpError.message);
+                console.warn('⚠️ Position is OPEN without protection!');
+
+                // Save entry trade with error flag
+                if (userId && botId) {
+                    await Trade.create({
+                        exchangeOrderId: mainOrder.id,
+                        botId: bot.id,
+                        side,
+                        status: "open",
+                        price: actualEntryPrice,
+                        quantity: positionSize,
+                        stopLoss: finalStopLoss,
+                        takeProfit: finalTakeProfit,
+                        // error: `SL/TP placement failed: ${slTpError.message}`,
+                        closedAt: 0
+                    });
+                }
+
+                // Emergency: close position or alert
+                throw new Error(`Entry filled but SL/TP failed: ${slTpError.message}. Position at risk!`);
+            }
+
+            // Save successful trade to database
+            let tradeRecord = null;
+            if (userId && botId) {
+                tradeRecord = await Trade.create({
+                    exchangeOrderId: mainOrder.id,
+                    stopLossOrderId: stopLossOrder?.id,
+                    takeProfitOrderId: takeProfitOrder?.id,
+                    botId: bot.id,
+                    side,
+                    status: "open",
+                    price: actualEntryPrice,
+                    quantity: positionSize,
+                    stopLoss: finalStopLoss,
+                    takeProfit: finalTakeProfit,
+                    closedAt: 0
+                });
+
+                console.log('✅ Trade record saved:', tradeRecord.id);
+            }
+
+            return {
+                mainOrder,
+                stopLossOrder,
+                takeProfitOrder,
+                tradeRecord,
+                status: 'success',
+                prices: {
+                    entry: actualEntryPrice,
+                    stopLoss: finalStopLoss,
+                    takeProfit: finalTakeProfit
+                }
+            };
+
         } catch (error) {
             // Save failed order to database
-            if (userId) {
+            if (userId && botId) {
                 await Trade.create({
-                    exchangeOrderId: 'FAILED_' + Date.now(),
-                    userId,
-                    botId,
+                    exchangeOrderId: mainOrder?.id || 'FAILED_' + Date.now(),
+                    botId: bot.id,
                     symbol,
                     side,
                     status: 'failed',
                     quantity: positionSize,
                     price,
                     stopLoss,
-                    takeProfit
+                    takeProfit,
+                    // error: error.message
                 });
             }
             throw error;
         }
-
-        // Save order to database
-        let tradeRecord = null;
-        if (userId && mainOrder.id) {
-            // Update bot performance immediately (preliminary)
-            tradeRecord = await Trade.create({
-                    exchangeOrderId: mainOrder.id,
-                    botId: bot.id,
-                    side,
-                    status: "open",
-                    price,
-                    quantity: positionSize,
-                    stopLoss,
-                    takeProfit,
-                    closedAt: 0,
-                    });
-        }
-
-        return {
-            mainOrder,
-            tradeRecord,
-            status: 'success'
-        };
 
     } catch (error) {
         console.error('Error executing trade with risk management:', error);
